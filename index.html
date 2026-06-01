@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VFS Student Visa Document Hub</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // PASTE YOUR SUPABASE CREDENTIALS HERE
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL'; 
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let currentStudent = "";
+        
+        // Master definition of documents required for VFS
+        const checklistItems = [
+            { id: "passport", category: "Civil Documents", name: "Valid Passport", desc: "Must have at least 2 blank pages, valid for 90+ days beyond visa expiry." },
+            { id: "photos", category: "Civil Documents", name: "Passport Photos (x2)", desc: "35mm x 45mm, sharp white background, neutral expression." },
+            { id: "acceptance", category: "Academic Documents", name: "Official Acceptance Letter", desc: "Enrollment or registration certificate from your target university." },
+            { id: "degrees", category: "Academic Documents", name: "Legalized Diplomas & Transcripts", desc: "Your graduation certificates, translated or apostilled if required." },
+            { id: "bank", category: "Financial Coverage", name: "3-Month Bank Statements", desc: "Sponsor or personal statements proving sufficient financial runway." },
+            { id: "insurance", category: "Health & Travel", name: "Travel Medical Insurance", desc: "Minimum €30,000 coverage matching international Schengen guidelines." }
+        ];
+
+        // Accesses or creates the student profile on submit
+        async function loadStudentProfile() {
+            const nameInput = document.getElementById('student-name-input').value.trim();
+            if (!nameInput) {
+                alert("Please enter your name to view your checklist.");
+                return;
+            }
+            
+            // Clean up name string for consistent data matching
+            currentStudent = nameInput.toLowerCase();
+            document.getElementById('current-user-display').innerText = `Portfolio: ${nameInput}`;
+            
+            // Toggle view visibility panels
+            document.getElementById('auth-panel').classList.add('hidden');
+            document.getElementById('checklist-workspace').classList.remove('hidden');
+
+            // Query database for this specific student's rows
+            const { data, error } = await supabase
+                .from('student_progress')
+                .select('*')
+                .eq('student_name', currentStudent);
+
+            if (error) {
+                console.error("Database connection fault:", error);
+                return;
+            }
+
+            // Create a quick key-value map of saved statuses
+            const progressMap = {};
+            data.forEach(row => {
+                progressMap[row.document_key] = row.status;
+            });
+
+            renderChecklistUI(progressMap);
+        }
+
+        function renderChecklistUI(progressMap) {
+            const container = document.getElementById('rows-container');
+            container.innerHTML = "";
+            
+            let readyCount = 0;
+
+            checklistItems.forEach(item => {
+                const savedStatus = progressMap[item.id] || "missing";
+                if(savedStatus === 'ready') readyCount++;
+
+                // Dynamic background colors depending on document state
+                let cardColor = "bg-white border-slate-200";
+                let selectColor = "border-slate-300 text-slate-700 bg-white";
+                
+                if(savedStatus === 'ready') {
+                    cardColor = "bg-emerald-50/40 border-emerald-200";
+                    selectColor = "border-emerald-500 bg-emerald-50 text-emerald-700 font-semibold";
+                } else if(savedStatus === 'in_progress') {
+                    cardColor = "bg-amber-50/40 border-amber-200";
+                    selectColor = "border-amber-400 bg-amber-50 text-amber-800 font-semibold";
+                }
+
+                const card = document.createElement('div');
+                card.className = `p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border rounded-xl transition shadow-xs ${cardColor}`;
+                card.innerHTML = `
+                    <div class="max-w-xl">
+                        <span class="text-[10px] uppercase font-bold tracking-wider text-slate-400 block mb-0.5">${item.category}</span>
+                        <h3 class="font-bold text-sm text-slate-800 flex items-center gap-1.5">
+                            ${savedStatus === 'ready' ? '✅' : savedStatus === 'in_progress' ? '🔄' : '⚠️'}
+                            ${item.name}
+                        </h3>
+                        <p class="text-xs text-slate-500 mt-0.5 leading-relaxed">${item.desc}</p>
+                    </div>
+                    <div>
+                        <select onchange="saveProgress('${item.id}', this.value)" class="text-xs rounded-lg border px-3 py-2 w-full sm:w-auto cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-500 transition ${selectColor}">
+                            <option value="missing" ${savedStatus === 'missing' ? 'selected' : ''}>⚠️ Missing</option>
+                            <option value="in_progress" ${savedStatus === 'in_progress' ? 'selected' : ''}>🔄 In Progress</option>
+                            <option value="ready" ${savedStatus === 'ready' ? 'selected' : ''}>✅ Ready</option>
+                        </select>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            // Re-calculate completion metrics
+            const pct = Math.round((readyCount / checklistItems.length) * 100);
+            document.getElementById('bar-fill').style.width = `${pct}%`;
+            document.getElementById('bar-label').innerText = `${pct}% Completed (${readyCount} of ${checklistItems.length} Verified)`;
+        }
+
+        // Saves a status modification to the cloud immediately on select change
+        async function saveProgress(docId, newStatus) {
+            if (!currentStudent) return;
+
+            const { error } = await supabase
+                .from('student_progress')
+                .upsert({ 
+                    student_name: currentStudent, 
+                    document_key: docId, 
+                    status: newStatus 
+                }, { onConflict: 'student_name,document_key' });
+
+            if (error) {
+                alert("Cloud sync failed. Check database logs.");
+                console.error("Database upsert failed:", error);
+            } else {
+                // Refresh profile data to smoothly recalculate numbers
+                loadStudentProfile();
+            }
+        }
+
+        function switchAccount() {
+            document.getElementById('student-name-input').value = "";
+            document.getElementById('checklist-workspace').classList.add('hidden');
+            document.getElementById('auth-panel').classList.remove('hidden');
+        }
+    </script>
+</head>
+<body class="bg-slate-50 min-h-screen py-12 px-4 text-slate-700 antialiased font-sans">
+
+    <div class="max-w-2xl mx-auto space-y-6">
+        
+        <div id="auth-panel" class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm text-center max-w-md mx-auto my-12">
+            <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 font-bold text-xl mb-4">🎓</div>
+            <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">VFS Study Visa Tracker</h1>
+            <p class="text-xs text-slate-500 mt-2 mb-6 leading-relaxed">Organize your mandatory student visa files. Type your name below to access your cloud-synchronized portfolio.</p>
+            
+            <div class="space-y-3">
+                <input id="student-name-input" type="text" placeholder="Enter your name (e.g. Sarah Jenkins)" class="border border-slate-300 rounded-xl px-4 py-2.5 text-sm w-full focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition text-center font-medium">
+                <button onclick="loadStudentProfile()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm py-2.5 rounded-xl transition cursor-pointer shadow-xs">Get Started</button>
+            </div>
+        </div>
+
+        <div id="checklist-workspace" class="hidden space-y-6">
+            
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="space-y-1 grow">
+                    <div class="flex items-center gap-2">
+                        <h2 id="current-user-display" class="font-extrabold text-slate-900 text-lg">Portfolio:</h2>
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-bold bg-emerald-50 text-emerald-700 tracking-wide uppercase border border-emerald-200">Cloud Sync Active</span>
+                    </div>
+                    <div class="w-full bg-slate-100 rounded-full h-2.5 mt-3">
+                        <div id="bar-fill" class="bg-emerald-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                    <div id="bar-label" class="text-xs font-semibold text-slate-500 pt-1 block">0% Completed</div>
+                </div>
+                <button onclick="switchAccount()" class="text-xs border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50 px-3 py-2 rounded-lg font-medium transition cursor-pointer shrink-0 align-self-start md:align-self-center">Log Out</button>
+            </div>
+
+            <div class="space-y-3" id="rows-container">
+                </div>
+            
+            <footer class="text-center text-[11px] text-slate-400 pt-4">
+                VFS Application Assistant App • Secure Serverless Cloud Execution
+            </footer>
+        </div>
+
+    </div>
+
+</body>
+</html>
