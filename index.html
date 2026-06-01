@@ -10,19 +10,24 @@
         // PASTE YOUR SUPABASE CREDENTIALS HERE
         const SUPABASE_URL = 'https://zkaffxvincheckmtfgz.supabase.co'; 
         const SUPABASE_ANON_KEY = 'sb_publishable_bWGg5-BvOet3eocjqdPFVg_gwOvUHaP';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // Use the global supabase object from the CDN to create the client
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentStudent = "";
         
-        // Master definition of documents required for VFS
+        // Italy-Specific VFS Checklist Items
         const checklistItems = [
-            { id: "passport", category: "Civil Documents", name: "Valid Passport", desc: "Must have at least 2 blank pages, valid for 90+ days beyond visa expiry." },
-            { id: "photos", category: "Civil Documents", name: "Passport Photos (x2)", desc: "35mm x 45mm, sharp white background, neutral expression." },
-            { id: "acceptance", category: "Academic Documents", name: "Official Acceptance Letter", desc: "Enrollment or registration certificate from your target university." },
-            { id: "degrees", category: "Academic Documents", name: "Legalized Diplomas & Transcripts", desc: "Your graduation certificates, translated or apostilled if required." },
-            { id: "bank", category: "Financial Coverage", name: "3-Month Bank Statements", desc: "Sponsor or personal statements proving sufficient financial runway." },
-            { id: "insurance", category: "Health & Travel", name: "Travel Medical Insurance", desc: "Minimum €30,000 coverage matching international Schengen guidelines." }
+            { id: "universitaly", category: "Mandatory", name: "Universitaly Summary", desc: "The summary generated from your Universitaly portal pre-enrollment application." },
+            { id: "dov_cimea", category: "Academic", name: "DoV or CIMEA Statement", desc: "Declaration of Value (from Embassy) or CIMEA Statement of Comparability." },
+            { id: "admission_letter", category: "Academic", name: "Official Admission Letter", desc: "The acceptance letter issued by the Italian university." },
+            { id: "passport", category: "Personal", name: "Valid Passport", desc: "Original + copies. Must be valid for at least 3 months after visa expiry." },
+            { id: "accommodation", category: "Logistics", name: "Proof of Accommodation", desc: "Lease agreement, hotel booking (15+ days), or a Declaration of Hospitality." },
+            { id: "financials", category: "Financial", name: "Proof of Means", desc: "Bank statements showing approx €6,100/year availability, or scholarship proof." },
+            { id: "insurance", category: "Health", name: "Health Insurance", desc: "Coverage of €30,000 for emergency medical/hospital expenses in Schengen area." },
+            { id: "flight", category: "Logistics", name: "Flight Reservation", desc: "Round-trip flight booking or a confirmed itinerary." }
         ];
+
 
         // Accesses or creates the student profile on submit
         async function loadStudentProfile() {
@@ -34,14 +39,14 @@
             
             // Clean up name string for consistent data matching
             currentStudent = nameInput.toLowerCase();
-            document.getElementById('current-user-display').innerText = `Portfolio: ${nameInput}`;
+            document.getElementById('current-user-display').innerText = `Student: ${nameInput}`;
             
             // Toggle view visibility panels
             document.getElementById('auth-panel').classList.add('hidden');
             document.getElementById('checklist-workspace').classList.remove('hidden');
 
             // Query database for this specific student's rows
-            const { data, error } = await supabase
+            const { data, error } = await _supabase
                 .from('student_progress')
                 .select('*')
                 .eq('student_name', currentStudent);
@@ -114,7 +119,8 @@
         async function saveProgress(docId, newStatus) {
             if (!currentStudent) return;
 
-            const { error } = await supabase
+            document.getElementById('sync-status').innerText = "Syncing...";
+            const { error } = await _supabase
                 .from('student_progress')
                 .upsert({ 
                     student_name: currentStudent, 
@@ -127,6 +133,7 @@
                 console.error("Database upsert failed:", error);
             } else {
                 // Refresh profile data to smoothly recalculate numbers
+                document.getElementById('sync-status').innerText = "Cloud Sync Active";
                 loadStudentProfile();
             }
         }
@@ -145,7 +152,7 @@
         <div id="auth-panel" class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm text-center max-w-md mx-auto my-12">
             <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 font-bold text-xl mb-4">🎓</div>
             <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">VFS Study Visa Tracker</h1>
-            <p class="text-xs text-slate-500 mt-2 mb-6 leading-relaxed">Organize your mandatory student visa files. Type your name below to access your cloud-synchronized portfolio.</p>
+            <p class="text-xs text-slate-500 mt-2 mb-6 leading-relaxed">Organize your mandatory student visa files for Italy. Type your name below to access your cloud-synchronized portfolio.</p>
             
             <div class="space-y-3">
                 <input id="student-name-input" type="text" placeholder="Enter your name (e.g. Sarah Jenkins)" class="border border-slate-300 rounded-xl px-4 py-2.5 text-sm w-full focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition text-center font-medium">
@@ -159,7 +166,7 @@
                 <div class="space-y-1 grow">
                     <div class="flex items-center gap-2">
                         <h2 id="current-user-display" class="font-extrabold text-slate-900 text-lg">Portfolio:</h2>
-                        <span class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-bold bg-emerald-50 text-emerald-700 tracking-wide uppercase border border-emerald-200">Cloud Sync Active</span>
+                        <span id="sync-status" class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-bold bg-emerald-50 text-emerald-700 tracking-wide uppercase border border-emerald-200">Cloud Sync Active</span>
                     </div>
                     <div class="w-full bg-slate-100 rounded-full h-2.5 mt-3">
                         <div id="bar-fill" class="bg-emerald-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
