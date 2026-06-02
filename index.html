@@ -6,6 +6,7 @@
     <title>STUDENT VISA FOR ALGERIANS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
     <script>
         // Tailwind Dark Mode Config
         tailwind.config = { darkMode: 'class' };
@@ -24,23 +25,22 @@
             window.STATUS_IN_PROGRESS = 'in_progress';
         })();
 
-        // Supabase Infrastructure Keys
-        const SUPABASE_URL = 'https://zkaffxvincheclkmtfgz.supabase.co'; 
-        const SUPABASE_ANON_KEY = 'sb_publishable_bWGg5-BvOet3eocjqdPFVg_gwOvUHaP';
-        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Run on page load
+        window.onload = () => translateStaticUI();
 
         let currentStudent = "";
         let currentLang = "fr"; 
         let globalProgressMap = {};
         let activeForumTab = "academic";
+        let isAdmin = false;
 
         const uiTranslations = {
             en: {
                 title: "ITALIAN STUDENT VISA FOR ALGERIANS",
                 subtitle: "This website is made by Salistral to track your progress. A checklist to see what folders you are missing and what you have done. Your data is cloud-saved whenever updated.",
                 placeholder: "Enter your name...",
-                whoAreYou: "Who are you?",
-                portfolio: "Portfolio",
+                whoAreYou: "Access Profile",
+                portfolio: "User",
                 logout: "Log Out",
                 readyToApply: "🎉 You're ready to apply for the visa!",
                 syncActive: "Cloud Sync Active",
@@ -53,14 +53,19 @@
                 tabFinancial: "💼 Garants & Financials",
                 tabDsu: "🎓 DSU Scholarships",
                 tabForum: "💬 Community Forums",
-                loginNotice: "Remember your username to return to your progress later. It's recommended to use a unique name or add a number (e.g., karim123)."
+                loginNotice: "Remember your username to return to your progress later. It's recommended to use a unique name or add a number (e.g., karim123).",
+                dsuTitle: "Regional Scholarship (DSU) Guide",
+                dsuSubtitle: "Find the scholarship body (DSU) associated with your university.",
+                newsTitle: "Official News & Updates",
+                newsPlaceholder: "Write an official update...",
+                newsBtn: "News"
             },
             fr: {
                 title: "VISA D'ETUDE POUR LES ALGÉRIENS",
                 subtitle: "Ce site web est créé par Salistral pour suivre vos progrès. Une liste de contrôle pour voir quels dossiers vous manquent et ce que vous avez fait. Vos données sont sauvegardées en temps réel.",
                 placeholder: "Entrez votre nom...",
-                whoAreYou: "t'es qui?",
-                portfolio: "vous etes",
+                whoAreYou: "Accéder au profil",
+                portfolio: "Utilisateur",
                 logout: "Se déconnecter",
                 readyToApply: "🎉 Vous êtes prêt à demander votre visa !",
                 syncActive: "Synchronisation Cloud Active",
@@ -73,14 +78,19 @@
                 tabFinancial: "💼 Garants & Financiers",
                 tabDsu: "🎓 Bourses DSU",
                 tabForum: "💬 Forums et aides",
-                loginNotice: "Retenez bien votre nom d'utilisateur pour retrouver votre progression. Il est conseillé d'utiliser un nom unique (ex: karim123)."
+                loginNotice: "Retenez bien votre nom d'utilisateur pour retrouver votre progression. Il est conseillé d'utiliser un nom unique (ex: karim123).",
+                dsuTitle: "Guide des Bourses Régionales (DSU)",
+                dsuSubtitle: "Trouvez l'organisme de bourse (DSU) associé à votre université.",
+                newsTitle: "Actualités et Mises à jour",
+                newsPlaceholder: "Écrire une info officielle...",
+                newsBtn: "News"
             },
             ar: {
-                title: " ايطاليا تأشيرة الدراسة للجزائريين",
+                title: "تأشيرة الدراسة الإيطالية للجزائريين",
                 subtitle: "تم إنشاء هذا الموقع بواسطة Salistral لمتابعة تقدمك. قائمة تحقق لمعرفة الملفات الناقصة وما قمت بإنجازه. يتم حفظ بياناتك سحابياً فور تحديثها.",
                 placeholder: "أدخل اسمك هنا...",
-                whoAreYou: "من أنت؟",
-                portfolio: "اسمك ",
+                whoAreYou: "دخول",
+                portfolio: "الملف الشخصي لـ",
                 logout: "تسجيل الخروج",
                 readyToApply: "🎉 راك جاهز باه تدفع الدوس!",
                 syncActive: "تم استرجاع بياناتك",
@@ -93,9 +103,28 @@
                 tabFinancial: "💼 الكفلاء والمالية",
                 tabDsu: "🎓 منحة DSU",
                 tabForum: "💬 منتدى المجتمع",
-                loginNotice: "تذكر اسم المستخدم الخاص بك للعودة إلى تقدمك لاحقاً. يُنصح باستخدام اسم فريد أو إضافة رقم (مثال: karim123)."
+                loginNotice: "تذكر اسم المستخدم الخاص بك للعودة إلى تقدمك لاحقاً. يُنصح باستخدام اسم فريد أو إضافة رقم (مثال: karim123).",
+                dsuTitle: "دليل المنح الدراسية الإقليمية (DSU)",
+                dsuSubtitle: "ابحث عن هيئة المنح الدراسية المرتبطة بجامعتك.",
+                newsTitle: "الأخبار والتحديثات الرسمية",
+                newsPlaceholder: "اكتب تحديثًا رسميًا...",
+                newsBtn: "الأخبار"
             }
         };
+
+        const dsuData = [
+            { region: "Lombardia", body: "DSU", univs: "Polimi, Statale di Milano, Bicocca, Pavia, Brescia" },
+            { region: "Emilia-Romagna", body: "ER.GO", univs: "Bologna, Ferrara, Modena, Reggio Emilia, Parma" },
+            { region: "Piemonte", body: "EDISU", univs: "UniTo, Polito, Piemonte Orientale" },
+            { region: "Lazio", body: "DiSCo Lazio", univs: "Sapienza, Tor Vergata, Roma Tre, Viterbo, Cassino" },
+            { region: "Toscana", body: "DSU Toscana", univs: "Pisa, Firenze, Siena" },
+            { region: "Veneto", body: "ESU", univs: "Padova, Venezia (Ca' Foscari), Verona" },
+            { region: "Campania", body: "ADISURC", univs: "Napoli Federico II, Vanvitelli, Salerno" },
+            { region: "Liguria", body: "ALISEO", univs: "Genova" },
+            { region: "Abruzzo", body: "ADSU", univs: "L'Aquila, Chieti-Pescara, Teramo" },
+            { region: "Puglia", body: "ADISU Puglia", univs: "Bari, Lecce, Foggia" },
+            { region: "Sicilia", body: "ERSU", univs: "Palermo, Catania, Messina, Enna" }
+        ];
 
         const garantTranslations = {
             en: {
@@ -304,6 +333,7 @@
             if (currentStudent) {
                 renderChecklistUI();
                 loadForumPosts();
+                renderDSU();
             }
         }
 
@@ -322,6 +352,8 @@
             document.getElementById('nav-dsu-btn').innerText = trans.tabDsu;
             document.getElementById('nav-forum-btn').innerText = trans.tabForum;
             document.getElementById('login-notice').innerText = trans.loginNotice;
+            document.getElementById('news-drawer-title').innerText = trans.newsTitle;
+            document.getElementById('news-floating-label').innerText = trans.newsBtn;
 
             // Smart Autofill & Recent Profiles
             const lastStudentName = localStorage.getItem('last_student_name');
@@ -329,6 +361,7 @@
                 document.getElementById('student-name-input').value = lastStudentName;
             }
             renderRecentProfiles();
+            renderDSU();
         }
 
         function renderRecentProfiles() {
@@ -347,6 +380,24 @@
                     class="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-full text-[10px] font-bold border border-indigo-100 dark:border-indigo-800 hover:bg-indigo-100 transition shadow-sm">
                     👤 ${name}
                 </button>
+            `).join('');
+        }
+
+        function renderDSU() {
+            const container = document.getElementById('dsu-list');
+            if (!container) return;
+            
+            document.getElementById('dsu-title-display').innerText = uiTranslations[currentLang].dsuTitle;
+            document.getElementById('dsu-subtitle-display').innerText = uiTranslations[currentLang].dsuSubtitle;
+
+            container.innerHTML = dsuData.map(item => `
+                <div class="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xs hover:border-indigo-500 transition-colors">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="font-black text-indigo-600 dark:text-indigo-400 text-sm uppercase text-start">${item.body}</h3>
+                        <span class="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded font-bold">${item.region}</span>
+                    </div>
+                    <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium text-start">${item.univs}</p>
+                </div>
             `).join('');
         }
 
@@ -387,6 +438,14 @@
             document.getElementById('auth-panel').classList.add('hidden');
             document.getElementById('checklist-workspace').classList.remove('hidden');
 
+            // Dynamic Admin Check
+            const { data: adminCheck } = await _supabase
+                .from('app_admins')
+                .select('username')
+                .eq('username', currentStudent)
+                .maybeSingle();
+            isAdmin = !!adminCheck;
+
             let { data, error } = await _supabase
                 .from('student_progress')
                 .select('*')
@@ -421,6 +480,8 @@
 
             renderChecklistUI();
             loadForumPosts();
+            loadNewsUpdates();
+            renderDSU();
             switchWorkspaceTab('academic');
             updateProgressMetrics();
         }
@@ -710,39 +771,38 @@
             container.innerHTML = "";
 
             if(!posts || posts.length === 0) {
-                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">No topics shared here yet.</p>`;
+                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">${currentLang === 'ar' ? 'لا توجد مواضيع هنا بعد' : 'No topics shared here yet.'}</p>`;
                 return;
             }
 
             // Optimized Fetch: Get all relevant replies in one request
             const postIds = posts.map(p => p.id);
-            const { data: allReplies } = await _supabase
-                .from('forum_replies')
-                .select('*')
-                .in('post_id', postIds)
-                .order('created_at', { ascending: true });
+            const { data: allReplies } = await _supabase.from('forum_replies').select('*').in('post_id', postIds).order('created_at', { ascending: true });
+            const repliesLookup = (allReplies || []).reduce((acc, rep) => {
+                if (!acc[rep.post_id]) acc[rep.post_id] = [];
+                acc[rep.post_id].push(rep);
+                return acc;
+            }, {});
 
             for(let post of posts) {
-                const replies = allReplies ? allReplies.filter(r => r.post_id === post.id) : [];
+                const replies = repliesLookup[post.id] || [];
 
                 const postEl = document.createElement('div');
                 postEl.className = "bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3 text-left";
                 
                 let repliesHTML = "";
-                if(replies) {
-                    replies.forEach(rep => {
-                        repliesHTML += `
-                            <div class="bg-white dark:bg-slate-800 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700 text-xs">
-                                <span class="font-bold text-indigo-600 dark:text-indigo-400">@${rep.student_name}:</span>
-                                <p class="text-slate-700 dark:text-slate-300 mt-0.5">${rep.content}</p>
-                            </div>
-                        `;
-                    });
-                }
+                replies.forEach(rep => {
+                    repliesHTML += `
+                        <div class="bg-white dark:bg-slate-800 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700 text-xs">
+                            <span class="font-bold text-indigo-600 dark:text-indigo-400 text-[10px]">👤</span>
+                            <p class="text-slate-700 dark:text-slate-300 mt-0.5">${rep.content}</p>
+                        </div>
+                    `;
+                });
 
                 postEl.innerHTML = `
                     <div class="text-xs">
-                        <span class="font-extrabold text-slate-900 dark:text-white">@${post.student_name}</span>
+                        <span class="font-extrabold text-slate-900 dark:text-white uppercase tracking-tight text-[10px]">👤 Question</span>
                         <p class="text-sm text-slate-800 dark:text-slate-200 mt-1 font-medium bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-100 dark:border-slate-700">${post.content}</p>
                     </div>
                     <div class="ps-4 border-s-2 border-indigo-100 dark:border-indigo-900 space-y-2">${repliesHTML}</div>
@@ -755,9 +815,108 @@
             }
         }
 
+        function toggleNewsDrawer() {
+            const drawer = document.getElementById('news-drawer');
+            const isOpening = drawer.classList.contains('translate-x-full');
+            drawer.classList.toggle('translate-x-full');
+            
+            if (isOpening) {
+                document.getElementById('news-dot').classList.add('hidden');
+                localStorage.setItem('last_news_seen_at', new Date().toISOString());
+            }
+        }
+
+        async function submitNewsUpdate() {
+            const content = document.getElementById('news-input').value.trim();
+            if(!content || !isAdmin) return;
+
+            const { error } = await _supabase.from('news_updates').insert([{
+                student_name: currentStudent,
+                content: content
+            }]);
+
+            if (error) {
+                alert("Error posting news: " + error.message);
+                return;
+            }
+            document.getElementById('news-input').value = "";
+            loadNewsUpdates();
+        }
+
+        function formatNewsContent(text) {
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            // Simple XSS protection by escaping basic HTML tags before linkifying
+            const escapedText = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            
+            return escapedText.replace(urlRegex, (url) => {
+                const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(url.split('?')[0]);
+                if (isImage) {
+                    return `<img src="${url}" class="mt-2 rounded-lg border border-slate-200 dark:border-slate-700 max-h-48 w-full object-cover shadow-sm" alt="Update Image">`;
+                }
+                return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 dark:text-indigo-400 underline font-bold decoration-indigo-300 hover:decoration-indigo-600">Link 🔗</a>`;
+            });
+        }
+
+        async function loadNewsUpdates() {
+            const { data: news, error } = await _supabase
+                .from('news_updates')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error("Fetch News Error:", error.message);
+                document.getElementById('news-list-container').innerHTML = `<p class="text-[10px] text-red-500 text-center py-10 opacity-50">Check database connection.</p>`;
+                return;
+            }
+
+            // Notification Dot Logic
+            const newsDot = document.getElementById('news-dot');
+            const drawer = document.getElementById('news-drawer');
+            if (news && news.length > 0 && drawer.classList.contains('translate-x-full')) {
+                const lastSeen = localStorage.getItem('last_news_seen_at');
+                if (!lastSeen || new Date(news[0].created_at) > new Date(lastSeen)) {
+                    newsDot.classList.remove('hidden');
+                }
+            }
+
+            const adminPanel = document.getElementById('news-admin-panel');
+            if (isAdmin) {
+                adminPanel.classList.remove('hidden');
+                document.getElementById('news-input').placeholder = uiTranslations[currentLang].newsPlaceholder;
+            } else {
+                adminPanel.classList.add('hidden');
+            }
+
+            const container = document.getElementById('news-list-container');
+            container.innerHTML = "";
+
+            if (!news || news.length === 0) {
+                container.innerHTML = `<p class="text-[10px] text-slate-400 text-center py-10 opacity-50">No news yet.</p>`;
+                return;
+            }
+
+            news.forEach(item => {
+                const date = new Date(item.created_at).toLocaleDateString(currentLang, { month: 'short', day: 'numeric' });
+                const newsEl = document.createElement('div');
+                newsEl.className = "p-3 bg-white dark:bg-slate-800 rounded-xl border-l-4 border-indigo-500 shadow-2xs space-y-1";
+                newsEl.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div class="flex flex-col">
+                            <div class="flex items-center gap-1.5">
+                                <span class="px-1 py-0.5 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 text-[8px] font-black uppercase tracking-tighter rounded border border-indigo-200 dark:border-indigo-800">Admin</span>
+                            </div>
+                            <span class="text-[8px] font-black text-indigo-600 uppercase tracking-widest mt-0.5">Official Update</span>
+                        </div>
+                        <span class="text-[9px] text-slate-400 font-bold whitespace-nowrap">${date}</span>
+                    </div>
+                    <p class="text-xs text-slate-700 dark:text-slate-200 leading-relaxed font-medium pt-1 whitespace-pre-wrap">${formatNewsContent(item.content)}</p>
+                `;
+                container.appendChild(newsEl);
+            });
+        }
+
         function switchAccount() {
-            localStorage.removeItem('last_student_name');
-            window.location.reload();
+            window.location.reload(); // Simple reload preserves recent_student_names but resets current session
         }
     </script>
 </head>
@@ -848,11 +1007,12 @@
                 <div class="space-y-3" id="financial-rows"></div>
             </div>
 
-            <div id="workspace-dsu" class="bg-white dark:bg-slate-900 p-12 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs text-center hidden">
-                <div class="text-4xl mb-4">⏳</div>
-                <h2 class="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">DSU Scholarship Tracker</h2>
-                <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">Coming Soon / Bientôt disponible / قريباً</p>
-                <p class="text-[10px] text-indigo-500 mt-4 font-bold">STAY TUNED</p>
+            <div id="workspace-dsu" class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4 hidden">
+                <div class="text-start">
+                    <h2 id="dsu-title-display" class="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">Regional Scholarship (DSU) Guide</h2>
+                    <p id="dsu-subtitle-display" class="text-xs text-slate-500 dark:text-slate-400 mt-1">List of Italian Universities and their regional scholarship bodies.</p>
+                </div>
+                <div id="dsu-list" class="grid grid-cols-1 gap-3"></div>
             </div>
 
             <div id="workspace-forum" class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-2xs hidden">
@@ -877,6 +1037,38 @@
             </footer>
         </div>
 
+    </div>
+
+    <!-- Floating News Toggle -->
+    <button onclick="toggleNewsDrawer()" class="fixed bottom-8 right-8 z-50 flex items-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-4 rounded-full shadow-[0_20px_50px_rgba(79,70,229,0.3)] transition-all hover:scale-110 active:scale-95 group border-4 border-white dark:border-slate-900">
+        <div class="relative">
+            <span class="text-xl group-hover:rotate-12 transition-transform duration-300">🔔</span>
+            <span id="news-dot" class="hidden absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full border-2 border-white dark:border-slate-900 animate-pulse"></span>
+        </div>
+        <span id="news-floating-label" class="text-xs font-black uppercase tracking-widest">News</span>
+    </button>
+
+    <!-- Floating News Drawer -->
+    <div id="news-drawer" class="fixed top-0 right-0 h-full w-80 bg-slate-50 dark:bg-slate-900 shadow-[-20px_0_50px_rgba(0,0,0,0.1)] z-[60] transform translate-x-full transition-transform duration-300 border-l border-slate-200 dark:border-slate-800 flex flex-col">
+        <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-900">
+            <h2 id="news-drawer-title" class="font-black text-slate-900 dark:text-white text-sm uppercase tracking-tight">Official News</h2>
+            <button onclick="toggleNewsDrawer()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xl font-bold">×</button>
+        </div>
+        
+        <!-- Post Area (Restricted) -->
+        <div id="news-admin-panel" class="hidden p-4 bg-indigo-50/50 dark:bg-indigo-900/20 border-b border-indigo-100 dark:border-indigo-900/50">
+            <div class="flex flex-col gap-2">
+                <textarea id="news-input" rows="2" class="w-full bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-900 rounded-lg p-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Post update..."></textarea>
+                <button onclick="submitNewsUpdate()" class="bg-indigo-600 text-white text-[10px] font-bold py-1.5 rounded-md hover:bg-indigo-700 transition">Post Update</button>
+            </div>
+        </div>
+
+        <!-- News Content -->
+        <div id="news-list-container" class="flex-1 overflow-y-auto p-4 space-y-4">
+            <!-- News items appear here -->
+        </div>
+        
+        <div class="p-4 text-center border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-[9px] text-slate-400 font-bold uppercase tracking-widest">End of Updates</div>
     </div>
 
 </body>
