@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,11 +13,10 @@
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentStudent = "";
-        let currentLang = "fr"; // Defaulted to French based on official documents
+        let currentLang = "fr"; 
         let globalProgressMap = {};
         let activeForumTab = "academic";
 
-        // Multilingual Translation Engine
         const uiTranslations = {
             en: {
                 title: "STUDENT VISA FOR ALGERIANS",
@@ -32,7 +31,10 @@
                 markProgress: "Mark In Progress",
                 forumTitle: "Community Forum Hub",
                 postBtn: "Post Question",
-                replyPlaceholder: "Write a helpful reply..."
+                replyPlaceholder: "Write a helpful reply...",
+                tabAcademic: "📁 Academic Docs",
+                tabFinancial: "💼 Garants & Financials",
+                tabForum: "💬 Community Forums"
             },
             fr: {
                 title: "STUDENT VISA FOR ALGERIANS",
@@ -47,7 +49,10 @@
                 markProgress: "Marquer En Cours",
                 forumTitle: "Espace d'Entraide Communautaire",
                 postBtn: "Publier",
-                replyPlaceholder: "Écrire une réponse utile..."
+                replyPlaceholder: "Écrire une réponse utile...",
+                tabAcademic: "📁 Docs Académiques",
+                tabFinancial: "💼 Garants & Financiers",
+                tabForum: "💬 Forums d'Entraide"
             },
             ar: {
                 title: "تأشيرة الدراسة للجزائريين",
@@ -62,29 +67,29 @@
                 markProgress: "تحديد كقيد الإنجاز",
                 forumTitle: "منتدى الاستفسارات المجتمعي",
                 postBtn: "نشر السؤال",
-                replyPlaceholder: "اكتب رداً مفيداً..."
+                replyPlaceholder: "اكتب رداً مفيداً...",
+                tabAcademic: "📁 الوثائق الأكاديمية",
+                tabFinancial: "💼 الكفلاء والمالية",
+                tabForum: "💬 منتدى المجتمع"
             }
         };
 
-        // Official checklist criteria explicitly pulled from the user document data
         const checklistItems = [
             // ACADEMIC SECTION
-            { id: "preinscription_universitaly", section: "academic", name: { fr: "Certificat de préinscription Universitaly", ar: "شهادة التسجيل المسبق يونيفرسيتالي", en: "Universitaly Pre-enrollment Certificate" }, desc: { fr: "Certificat parvenu exclusivement à travers le portail Universitaly pour des études universitaires ou admission.", ar: "الشهادة المستلمة حصرياً عبر بوابة يونيفرسيتالي للدراسات الجامعية أو القبول." } },
-            { id: "cursus_algerie", section: "academic", name: { fr: "Documentation des études antécédentes en Algérie", ar: "وثائق الدراسات السابقة في الجزائر", en: "Prior Studies Documentation in Algeria" }, desc: { fr: "Photocopie de la documentation concernant les études des années antécédentes en Algérie. Présenter les originaux.", ar: "نسخة من وثائق السنوات الدراسية السابقة في الجزائر، مع تقديم الأصول." } },
-            { id: "attestation_langue", section: "academic", name: { fr: "Attestation de connaissance de la langue", ar: "شهادة كفاءة اللغة", en: "Language Proficiency Attestation" }, desc: { fr: "Niveau B2 requis. Italien (CELI, CILS, PLIDA) ou Anglais (IELTS délivré par le British Council).", ar: "مستوى B2 مطلوب. الإيطالية (CELI, CILS, PLIDA) أو الإنجليزية (IELTS من المجلس الثقافي البريطاني)." } },
+            { id: "preinscription_universitaly", section: "academic", name: { fr: "Certificat de préinscription Universitaly", ar: "شهادة التسجيل المسبق يونيفرسيتالي", en: "Universitaly Pre-enrollment Certificate" }, desc: { fr: "Certificat parvenu exclusivement à travers le portail Universitaly pour des études universitaires ou admission[cite: 2].", ar: "الشهادة المستلمة حصرياً عبر بوابة يونيفرسيتالي للدراسات الجامعية أو القبول[cite: 2]." } },
+            { id: "cursus_algerie", section: "academic", name: { fr: "Documentation des études antécédentes en Algérie", ar: "وثائق الدراسات السابقة في الجزائر", en: "Prior Studies Documentation in Algeria" }, desc: { fr: "Photocopie de la documentation concernant les études des années antécédentes en Algérie. Présenter les originaux[cite: 2].", ar: "نسخة من وثائق السنوات الدراسية السابقة في الجزائر، مع تقديم الأصول[cite: 2]." } },
+            { id: "attestation_langue", section: "academic", name: { fr: "Attestation de connaissance de la langue", ar: "شهادة كفاءة اللغة", en: "Language Proficiency Attestation" }, desc: { fr: "Niveau B2 requis. Italien (CELI, CILS, PLIDA) ou Anglais (IELTS délivré par le British Council)[cite: 2].", ar: "مستوى B2 مطلوب. الإيطالية (CELI, CILS, PLIDA) أو الإنجليزية (IELTS من المجلس الثقافي البريطاني)[cite: 2]." } },
+            { id: "form_long_sejour", section: "academic", name: { fr: "Formulaire long séjour rempli et signé", ar: "استمارة الإقامة طويلة المدى", en: "Long-Stay Application Form" }, desc: { fr: "Formulaire original pour la demande de visa d'entrée[cite: 2]. Téléchargeable ou remis chez VFS Global[cite: 2].", ar: "الاستمارة الأصلية لطلب التأشيرة[cite: 2]. يمكن تحميلها أو استلامها من مركز VFS Global[cite: 2]." } },
+            { id: "photo_biometrique", section: "academic", name: { fr: "Photographie biométrique", ar: "الصورة البيومترية", en: "Biometric Photo" }, desc: { fr: "Photo couleur (30x40mm), récente (max 6 mois) sur fond blanc conforme aux normes OACI[cite: 2].", ar: "صورة شخصية ملونة (30×40 ملم)، حديثة (أقل من 6 أشهر) بخلفية بيضاء ومعايير الـ OACI[cite: 2]." } },
+            { id: "passeport_original", section: "academic", name: { fr: "Original du passeport", ar: "أصل جواز السفر", en: "Original Passport" }, desc: { fr: "Validité supérieure d'au moins 15 mois par rapport au visa demandé, contenant 2 feuillets vierges face à face[cite: 2].", ar: "صلاحية تزيد عن 15 شهراً من التأشيرة المطلوبة، ويحتوي على صفحتين فارغتين متقابلتين[cite: 2]." } },
+            { id: "passeport_photocopie", section: "academic", name: { fr: "Photocopie du passeport", ar: "نسخة من جواز السفر", en: "Passport Photocopy" }, desc: { fr: "Photocopie de la page biométrique et de toutes les pages contenant des visas ou cachets Schengen[cite: 2].", ar: "نسخة من الصفحة البيومترية وجميع الصفحات التي تحتوي على تأشيرات أو أختام دخول وخروج شينغن[cite: 2]." } },
             
             // FINANCIALS & GUARANTORS SECTION
-            { id: "moyens_economiques", section: "financial", name: { fr: "Preuve des moyens économiques de subsistance", ar: "إثبات الإمكانيات المادية للمعيشة", en: "Proof of Economic Means of Subsistence" }, desc: { fr: "Au moins 457,99 € par mois. Extraits de compte bancaire relatifs aux 6 derniers mois (personnels ou familiaux).", ar: "457.99 يورو شهرياً على الأقل. كشوفات الحساب البنكي لآخر 6 أشهر (شخصية أو عائلية)." } },
-            { id: "situation_garants", section: "financial", name: { fr: "Justificatifs de la situation des Garants", ar: "وثائق الوضع السوسيومهني للكفلاء", en: "Socio-Professional Proof of Guarantors" }, desc: { fr: "Justificatifs de la situation socioprofessionnelle des parents ou des Garants (Photocopie / Originaux).", ar: "إثباتات الوضع المهني والاجتماعي للوالدين أو الكفلاء (نسخ / أصول)." } },
-            { id: "moyens_logement", section: "financial", name: { fr: "Déclaration de disponibilité de logement en Italie", ar: "إقرار توفر السكن في إيطاليا", en: "Declaration of Accommodation Availability" }, desc: { fr: "Bail, réservation d'hôtel (15+ jours), ou Déclaration d'Hospitalité, ainsi que les fonds pour le rapatriement.", ar: "عقد إيجار، حجز فندق (15+ يوم)، أو إقرار استضافة، بالإضافة إلى تكاليف الترحيل." } },
-            { id: "assurance_medicale", section: "financial", name: { fr: "Assurance médicale", ar: "التأمين الصحي", en: "Schengen Medical Insurance" }, desc: { fr: "Couvrant les soins/hospitalisation d'urgence (30 000 €) sans limitations, ou déclaration consulaire.", ar: "تغطية العلاج والمستشفى الطارئ (30,000 يورو) بدون قيود أو استثناءات." } },
-            { id: "titre_transport", section: "financial", name: { fr: "Titre de transport / Réservation", ar: "تذكرة السفر أو حجز الطيران", en: "Flight Ticket or Booking Reservation" }, desc: { fr: "Billet d'aller simple ou réservation de billet confirmée.", ar: "تذكرة ذهاب فقط أو حجز مؤكد للرحلة." } },
-
-            // CORE DOSSIER MANDATORY (Rendered overall)
-            { id: "form_long_sejour", section: "academic", name: { fr: "Formulaire long séjour rempli et signé", ar: "استمارة الإقامة طويلة المدى", en: "Long-Stay Application Form" }, desc: { fr: "Formulaire original pour la demande de visa d'entrée, bien qu'il vous sera remis à l'arrivée chez VFS.", ar: "الاستمارة الأصلية لطلب التأشيرة، علمًا أنه يمكن استلامها أيضًا عند الوصول إلى مركز VFS." } },
-            { id: "photo_biometrique", section: "academic", name: { fr: "Photographie biométrique", ar: "الصورة البيومترية", en: "Biometric Photo" }, desc: { fr: "Photo d'identité couleur (30x40mm), récente (max 6 mois) sur fond blanc conforme aux normes OACI.", ar: "صورة شخصية ملونة (30×40 ملم)، حديثة (أقل من 6 أشهر) بخلفية بيضاء ومعايير الـ OACI." } },
-            { id: "passeport_original", section: "academic", name: { fr: "Original du passeport", ar: "أصل جواز السفر", en: "Original Passport" }, desc: { fr: "Validité supérieure d'au moins 15 mois par rapport au visa demandé, contenant 2 feuillets vierges face à face.", ar: "صلاحية تزيد عن 15 شهراً من التأشيرة المطلوبة، ويحتوي على صفحتين فارغتين متقابلتين." } },
-            { id: "passeport_photocopie", section: "academic", name: { fr: "Photocopie du passeport", ar: "نسخة من جواز السفر", en: "Passport Photocopy" }, desc: { fr: "Photocopie de la page biométrique et de toutes les pages contenant des visas ou cachets Schengen.", ar: "نسخة من الصفحة البيومترية وجميع الصفحات التي تحتوي على تأشيرات أو أختام دخول وخروج شينغن." } }
+            { id: "moyens_economiques", section: "financial", name: { fr: "Preuve des moyens économiques de subsistance", ar: "إثبات الإمكانيات المادية للمعيشة", en: "Proof of Economic Means of Subsistence" }, desc: { fr: "Au moins 457,99 € par mois[cite: 2]. Extraits de compte bancaire relatifs aux 6 derniers mois (personnels ou familiaux)[cite: 2].", ar: "457.99 يورو شهرياً على الأقل[cite: 2]. كشوفات الحساب البنكي لآخر 6 أشهر (شخصية أو عائلية)[cite: 2]." } },
+            { id: "situation_garants", section: "financial", name: { fr: "Justificatifs de la situation des Garants", ar: "وثائق الوضع السوسيومهني للكفلاء", en: "Socio-Professional Proof of Guarantors" }, desc: { fr: "Justificatifs de la situation socioprofessionnelle des parents ou des Garants (Photocopie / Originaux)[cite: 2].", ar: "إثباتات الوضع المهني والاجتماعي للوالدين أو الكفلاء (نسخ / أصول)[cite: 2]." } },
+            { id: "moyens_logement", section: "financial", name: { fr: "Déclaration de disponibilité de logement en Italie", ar: "إقرار توفر السكن في إيطاليا", en: "Declaration of Accommodation Availability" }, desc: { fr: "Bail, réservation d'hôtel (15+ jours), ou Déclaration d'Hospitalité, ainsi que les fonds pour le rapatriement[cite: 2].", ar: "عقد إيجار، حجز فندق (15+ يوم)، أو إقرار استضافة، بالإضافة إلى تكاليف الترحيل[cite: 2]." } },
+            { id: "assurance_medicale", section: "financial", name: { fr: "Assurance médicale", ar: "التأمين الصحي", en: "Schengen Medical Insurance" }, desc: { fr: "Couvrant les soins/hospitalisation d'urgence (30 000 €) sans limitations, ou déclaration consulaire[cite: 2].", ar: "تغطية العلاج والمستشفى الطارئ (30,000 يورو) بدون قيود أو استثناءات[cite: 2]." } },
+            { id: "titre_transport", section: "financial", name: { fr: "Titre de transport / Réservation", ar: "تذكرة السفر أو حجز الطيران", en: "Flight Ticket or Booking Reservation" }, desc: { fr: "Billet d'aller simple ou réservation de billet confirmée[cite: 2].", ar: "تذكرة ذهاب فقط أو حجز مؤكد للرحلة[cite: 2]." } }
         ];
 
         function changeLanguage(langCode) {
@@ -106,6 +111,31 @@
             document.getElementById('btn-logout').innerText = trans.logout;
             document.getElementById('forum-title-display').innerText = trans.forumTitle;
             document.getElementById('forum-submit-btn').innerText = trans.postBtn;
+            
+            // Translate the Navigation Tab Buttons
+            document.getElementById('nav-academic-btn').innerText = trans.tabAcademic;
+            document.getElementById('nav-financial-btn').innerText = trans.tabFinancial;
+            document.getElementById('nav-forum-btn').innerText = trans.tabForum;
+        }
+
+        // Switches between the 3 main sections cleanly
+        function switchWorkspaceTab(sectionName) {
+            // Hide all workspaces
+            document.getElementById('workspace-academic').classList.add('hidden');
+            document.getElementById('workspace-financial').classList.add('hidden');
+            document.getElementById('workspace-forum').classList.add('hidden');
+            
+            // Reset nav tab buttons look
+            document.querySelectorAll('.workspace-nav-btn').forEach(btn => {
+                btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-xs');
+                btn.classList.add('bg-white', 'text-slate-600', 'border-slate-200');
+            });
+
+            // Show active workspace and style its tab button
+            document.getElementById(`workspace-${sectionName}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`nav-${sectionName}-btn`);
+            activeBtn.classList.remove('bg-white', 'text-slate-600', 'border-slate-200');
+            activeBtn.classList.add('bg-indigo-600', 'text-white', 'shadow-xs');
         }
 
         async function loadStudentProfile() {
@@ -136,10 +166,10 @@
 
             renderChecklistUI();
             loadForumPosts();
+            switchWorkspaceTab('academic'); // Default view on load
         }
 
         function renderChecklistUI() {
-            // Build split layouts
             const academicContainer = document.getElementById('academic-rows');
             const financialContainer = document.getElementById('financial-rows');
             academicContainer.innerHTML = "";
@@ -216,7 +246,7 @@
                 .eq('student_name', currentStudent);
         }
 
-        // ================= COMMUNITY FORUM SYSTEM ENGINE =================
+        // Forum Section Channel Switcher (Sub-tabs within Forums)
         function switchForumTab(tabName) {
             activeForumTab = tabName;
             document.querySelectorAll('.forum-tab-btn').forEach(btn => btn.classList.remove('bg-indigo-600', 'text-white'));
@@ -313,16 +343,15 @@
 
     <div class="max-w-2xl mx-auto space-y-6">
         
-        <!-- Interactive Localization Selector Widget -->
-        <div class="flex justify-between items-center bg-white p-3 border border-slate-200 rounded-xl">
-            <!-- Informational Explanation Overlay Tooltip Trigger -->
+        <!-- Global Header Menu Selector -->
+        <div class="flex justify-between items-center bg-white p-3 border border-slate-200 rounded-xl shadow-2xs">
             <div class="relative group cursor-pointer flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-200 transition">
                 <span>ℹ️</span> How it works
                 <div class="absolute top-8 start-0 hidden group-hover:block w-72 bg-slate-900 text-white text-[11px] p-4 rounded-xl shadow-xl space-y-2 z-50 pointer-events-none leading-relaxed">
                     <p class="font-bold border-b border-slate-700 pb-1 text-indigo-400 text-xs">Salistral Visa Assistant Protocol</p>
-                    <p>1. Enter your name to login or auto-generate a portfolio.</p>
-                    <p>2. Complete checkboxes across distinct Academic & Guarantor lists.</p>
-                    <p>3. Post queries in real-time under any shared Community Forum category.</p>
+                    <p>1. Enter your name to login or create your tracker layout profile.</p>
+                    <p>2. Toggle the main top tabs to look at Academic or Financial documents seamlessly.</p>
+                    <p>3. Drop questions or browse peer insights via the live Community Forum panel.</p>
                 </div>
             </div>
             <div class="flex gap-2 text-xs font-bold">
@@ -332,7 +361,7 @@
             </div>
         </div>
         
-        <!-- VIEW 1: AUTH REGISTRATION ENTRY HUB -->
+        <!-- VIEW 1: LOGIN ENTRY HUB -->
         <div id="auth-panel" class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm text-center max-w-md mx-auto my-12">
             <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 font-bold text-xl mb-4">🇩🇿</div>
             <h1 id="main-title" class="text-lg font-black text-slate-900 tracking-tight uppercase">STUDENT VISA FOR ALGERIANS</h1>
@@ -344,11 +373,11 @@
             </div>
         </div>
 
-        <!-- VIEW 2: ACTIVE WORKSPACE PROFILE PACK -->
+        <!-- VIEW 2: MAIN DASHBOARD ENVIRONMENT -->
         <div id="checklist-workspace" class="hidden space-y-6">
             
-            <!-- Student Header Profile Stats Panel -->
-            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col gap-4">
+            <!-- Student Header Profile Sync Stats Panel -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs flex flex-col gap-4">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
                         <h2 id="current-user-display" class="font-extrabold text-slate-900 text-base">Portefeuille:</h2>
@@ -365,39 +394,51 @@
                         <span id="last-update-time" class="text-[10px] text-slate-400">Sync Active</span>
                     </div>
                 </div>
-                <!-- Dynamic Completion Message Alert Container -->
-                <div id="ready-alert" class="hidden p-3 bg-emerald-500 text-white text-center font-bold text-sm rounded-xl animate-bounce"></div>
+                <!-- Progress Completion Alert Block -->
+                <div id="ready-alert" class="hidden p-3 bg-emerald-500 text-white text-center font-bold text-sm rounded-xl"></div>
             </div>
 
-            <!-- CHECKLIST TAB GRID SECTIONS -->
-            <div class="space-y-2 text-start">
-                <h2 class="text-xs font-black uppercase text-slate-400 tracking-widest px-1">📁 Documents Académiques / Academic</h2>
+            <!-- 🎛️ NEW INTERACTIVE WORKSPACE NAVIGATION TAB BAR -->
+            <div class="grid grid-cols-3 gap-2 p-1 bg-slate-200/60 rounded-xl border border-slate-200">
+                <button id="nav-academic-btn" onclick="switchWorkspaceTab('academic')" class="workspace-nav-btn text-xs font-bold py-2.5 px-2 rounded-lg border transition bg-indigo-600 text-white shadow-xs">
+                    📁 Docs Académiques
+                </button>
+                <button id="nav-financial-btn" onclick="switchWorkspaceTab('financial')" class="workspace-nav-btn text-xs font-bold py-2.5 px-2 rounded-lg border transition bg-white text-slate-600 border-slate-200 hover:bg-slate-50">
+                    💼 Garants & Financiers
+                </button>
+                <button id="nav-forum-btn" onclick="switchWorkspaceTab('forum')" class="workspace-nav-btn text-xs font-bold py-2.5 px-2 rounded-lg border transition bg-white text-slate-600 border-slate-200 hover:bg-slate-50">
+                    💬 Forums d'Entraide
+                </button>
+            </div>
+
+            <!-- TAB 1 CONTENT SECTION: ACADEMIC DOCUMENTS -->
+            <div id="workspace-academic" class="space-y-3 text-start">
                 <div class="space-y-3" id="academic-rows"></div>
             </div>
 
-            <div class="space-y-2 text-start pt-4">
-                <h2 class="text-xs font-black uppercase text-slate-400 tracking-widest px-1">💼 Garants & Financiers / Financials</h2>
+            <!-- TAB 2 CONTENT SECTION: FINANCIAL DOCUMENTS -->
+            <div id="workspace-financial" class="space-y-3 text-start hidden">
                 <div class="space-y-3" id="financial-rows"></div>
             </div>
 
-            <!-- COMMUNITY FORUM MODULE PACK -->
-            <div class="bg-white p-6 rounded-2xl border border-slate-200 space-y-4 shadow-2xs text-start">
+            <!-- TAB 3 CONTENT SECTION: INTEGRATED COMMUNITY FORUM MODULE -->
+            <div id="workspace-forum" class="bg-white p-6 rounded-2xl border border-slate-200 space-y-4 shadow-2xs text-start hidden">
                 <h2 id="forum-title-display" class="font-black text-slate-900 text-base tracking-tight">Espace d'Entraide Communautaire</h2>
                 
-                <!-- Channel Subcategories Selectors -->
+                <!-- Channel Subcategories Tag Selectors -->
                 <div class="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl text-center font-bold text-xs">
                     <button id="tab-academic" onclick="switchForumTab('academic')" class="forum-tab-btn py-1.5 rounded-lg bg-indigo-600 text-white transition">Academic</button>
                     <button id="tab-financial" onclick="switchForumTab('financial')" class="forum-tab-btn py-1.5 rounded-lg transition">Garants</button>
                     <button id="tab-general" onclick="switchForumTab('general')" class="forum-tab-btn py-1.5 rounded-lg transition">General</button>
                 </div>
 
-                <!-- Live Topic Query Input Blocks -->
+                <!-- Post Topic Input Fields -->
                 <div class="flex flex-col sm:flex-row gap-2 pt-2">
                     <input id="forum-input" type="text" placeholder="Posez votre question ici..." class="border border-slate-200 rounded-xl px-4 py-2 text-xs grow focus:outline-indigo-500">
                     <button id="forum-submit-btn" onclick="submitForumPost()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-2 rounded-xl transition">Publier</button>
                 </div>
 
-                <!-- Real-time Active Thread Feed Target Container -->
+                <!-- Dynamic Real-time Comment Stream Container -->
                 <div id="forum-posts-container" class="space-y-3 max-h-96 overflow-y-auto pt-2"></div>
             </div>
             
