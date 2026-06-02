@@ -7,6 +7,18 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+        // Tailwind Dark Mode Config
+        tailwind.config = { darkMode: 'class' };
+
+        // Initialize Theme
+        (function() {
+            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        })();
+
         // Supabase Infrastructure Keys
         const SUPABASE_URL = 'https://zkaffxvincheclkmtfgz.supabase.co'; 
         const SUPABASE_ANON_KEY = 'sb_publishable_bWGg5-BvOet3eocjqdPFVg_gwOvUHaP';
@@ -34,7 +46,9 @@
                 replyPlaceholder: "Write a helpful reply...",
                 tabAcademic: "📁 Academic Docs",
                 tabFinancial: "💼 Garants & Financials",
-                tabForum: "💬 Community Forums"
+                tabDsu: "🎓 DSU Scholarships",
+                tabForum: "💬 Community Forums",
+                loginNotice: "Remember your username to return to your progress later. It's recommended to use a unique name or add a number (e.g., karim123)."
             },
             fr: {
                 title: "VISA D'ETUDE POUR LES ALGÉRIENS",
@@ -52,7 +66,9 @@
                 replyPlaceholder: "Écrire une réponse utile...",
                 tabAcademic: "📁 Docs Académiques",
                 tabFinancial: "💼 Garants & Financiers",
-                tabForum: "💬 Forums et aides"
+                tabDsu: "🎓 Bourses DSU",
+                tabForum: "💬 Forums et aides",
+                loginNotice: "Retenez bien votre nom d'utilisateur pour retrouver votre progression. Il est conseillé d'utiliser un nom unique (ex: karim123)."
             },
             ar: {
                 title: " ايطاليا تأشيرة الدراسة للجزائريين",
@@ -70,26 +86,210 @@
                 replyPlaceholder: "سؤال...",
                 tabAcademic: "📁 الوثائق الأكاديمية",
                 tabFinancial: "💼 الكفلاء والمالية",
-                tabForum: "💬 منتدى المجتمع"
+                tabDsu: "🎓 منحة DSU",
+                tabForum: "💬 منتدى المجتمع",
+                loginNotice: "تذكر اسم المستخدم الخاص بك للعودة إلى تقدمك لاحقاً. يُنصح باستخدام اسم فريد أو إضافة رقم (مثال: karim123)."
+            }
+        };
+
+        const garantTranslations = {
+            en: {
+                baseHeader: "⚡ Mandatory Common Documents (DZ):",
+                peCharge: "Attestation of financial support / Prise en charge",
+                identity: "Identity (Passport / National ID / Driving License)",
+                
+                title_dz_salary: "Employee Documents:",
+                dz_sal_work: "Work Certificate / Attestation de travail",
+                dz_sal_cnas: "CNAS Affiliation",
+                dz_sal_pay: "Pay slips for the last 03 months",
+                dz_sal_bank: "Bank statements and/or CCP for the last 03 months",
+                
+                title_dz_merchant: "Merchant Documents:",
+                dz_comm_rc: "Commercial Registry (Original + Translation)",
+                dz_comm_social: "CASNOS and/or CNAS update status",
+                dz_comm_c20: "Tax Form (C20) / Declaration of existence",
+                dz_comm_bank: "Bank statements and/or CCP for the last 03 months",
+                
+                title_dz_farmer: "Farmer Documents:",
+                dz_agri_fiche: "Descriptive Identification Sheet / Fiche signalétique",
+                dz_agri_casnos: "CASNOS update status",
+                dz_agri_bank: "Bank account statements for the last 03 months",
+                
+                title_dz_liberal: "Independent / Liberal Profession Documents:",
+                dz_lib_ex: "Practice Certificate (Approval, installation decision... etc.)",
+                dz_lib_c20: "Tax Form (C20) or final balance sheet",
+                dz_lib_casnos: "CASNOS update status",
+                dz_lib_bank: "Bank account statements for the last 03 months",
+                
+                title_dz_retired: "Pensioner Documents (Algerian Dinars):",
+                dz_ret_cnr: "CNR Pension Income Attestation",
+                dz_ret_bank: "Bank and/or CCP account statements for the last 03 months",
+                
+                title_ext_fr_salary: "🇫🇷 France Employee (Min 1800€):",
+                ext_fr_sal_work: "Work Certificate",
+                ext_fr_sal_tax: "Latest Tax Notice / Avis d'imposition",
+                ext_fr_sal_pay: "Pay slips for the last 03 months (Min 1800€)",
+                ext_fr_sal_bank: "Bank statements for the last 03 months",
+                
+                title_ext_fr_merchant: "🇫🇷 France Merchant:",
+                ext_fr_comm_tax: "Latest Tax Notice / Avis d'imposition",
+                ext_fr_comm_kbis: "K-BIS Extract",
+                ext_fr_comm_bank: "Bank statements for the last 03 months",
+                
+                title_ext_usa: "🇺🇸 USA Requirements:",
+                ext_usa_work: "Work Certificate",
+                ext_usa_tax: "1040 or W2 Tax Form",
+                ext_usa_pay: "Pay slips for the last 03 months",
+                ext_usa_bank: "Bank statements for the last 03 months",
+                
+                title_ext_canada: "🇨🇦 Canada Requirements:",
+                ext_can_work: "Work Certificate",
+                ext_can_tax: "Latest Notice of Assessment / Avis de cotisation",
+                ext_can_pay: "Pay slips for the last 03 months",
+                ext_can_bank: "Bank statements for the last 03 months"
+            },
+            fr: {
+                baseHeader: "⚡ Pièces Communes Obligatoires (DZ) :",
+                peCharge: "Attestation de prise en charge financière",
+                identity: "Identité (Passeport / CNI / Permis de conduire)",
+                
+                title_dz_salary: "Documents Salarié :",
+                dz_sal_work: "Attestation de travail",
+                dz_sal_cnas: "Affiliation CNAS",
+                dz_sal_pay: "Bulletins de paie des 03 derniers mois",
+                dz_sal_bank: "Relevés bancaires ou/et CCP des 03 derniers mois",
+                
+                title_dz_merchant: "Documents Commerçant :",
+                dz_comm_rc: "Registre du commerce (Original + Traduction)",
+                dz_comm_social: "Mise à jour CASNOS et/ou CNAS",
+                dz_comm_c20: "Attestation d'impôts (C20) / Déclaration d'existence",
+                dz_comm_bank: "Relevés bancaires ou/et CCP des 03 derniers mois",
+                
+                title_dz_farmer: "Documents Agriculteur :",
+                dz_agri_fiche: "Fiche signalétique",
+                dz_agri_casnos: "Mise à jour CASNOS",
+                dz_agri_bank: "Relevés de compte bancaire des 03 derniers mois",
+                
+                title_dz_liberal: "Documents Profession Libérale :",
+                dz_lib_ex: "Attestation d'exercice d'activité (Agrément, décision d'installation)",
+                dz_lib_c20: "Attestation des impôts (C20) ou bilan final",
+                dz_lib_casnos: "Mise à jour CASNOS",
+                dz_lib_bank: "Relevés de compte bancaire des 03 derniers mois",
+                
+                title_dz_retired: "Documents Retraité (Dinars) :",
+                dz_ret_cnr: "Attestation de revenus CNR",
+                dz_ret_bank: "Relevés de compte bancaire et/ou CCP des 03 derniers mois",
+                
+                title_ext_fr_salary: "🇫🇷 France Salarié : <span class=\"text-rose-600 lowercase font-normal\">(Min 1800€)</span>",
+                ext_fr_sal_work: "Attestation de travail",
+                ext_fr_sal_tax: "Dernier avis d'imposition",
+                ext_fr_sal_pay: "Bulletins de paie des 3 derniers mois (Min 1800€)",
+                ext_fr_sal_bank: "Relevés bancaires des 03 derniers mois",
+                
+                title_ext_fr_merchant: "🇫🇷 France Commerçant :",
+                ext_fr_comm_tax: "Dernier avis d'imposition",
+                ext_fr_comm_kbis: "Extrait de K-BIS",
+                ext_fr_comm_bank: "Relevés bancaires des 03 derniers mois",
+                
+                title_ext_usa: "🇺🇸 USA Requirements :",
+                ext_usa_work: "Attestation de travail",
+                ext_usa_tax: "1040 ou W2 Form",
+                ext_usa_pay: "Bulletins de paie des 03 derniers mois",
+                ext_usa_bank: "Relevés bancaires des 03 derniers mois",
+                
+                title_ext_canada: "🇨🇦 Canada Requirements :",
+                ext_can_work: "Attestation de travail",
+                ext_can_tax: "Dernier avis de cotisation",
+                ext_can_pay: "Bulletins de paie des 03 derniers mois",
+                ext_can_bank: "Relevés bancaires des 03 derniers mois"
+            },
+            ar: {
+                baseHeader: "⚡ الوثائق العامة الإلزامية (الجزائر):",
+                peCharge: "تعهد بالتكفل المالي",
+                identity: "إثبات الهوية (جواز سفر / بطاقة التعريف الوطنية / رخصة السياقة)",
+                
+                title_dz_salary: "وثائق الموظف أو الأجير:",
+                dz_sal_work: "شهادة عمل",
+                dz_sal_cnas: "شهادة الانتساب الضمان الاجتماعي CNAS",
+                dz_sal_pay: "كشف الراتب لآخر 03 أشهر",
+                dz_sal_bank: "كشف الحساب البنكي أو البريدي CCP لآخر 03 أشهر",
+                
+                title_dz_merchant: "وثائق التاجر:",
+                dz_comm_rc: "السجل التجاري (الأصل + الترجمة)",
+                dz_comm_social: "وضعية التحديث CASNOS و/أو CNAS",
+                dz_comm_c20: "الشهادة الجبائية (C20) / شهادة الوجود",
+                dz_comm_bank: "كشف الحساب البنكي أو البريدي CCP لآخر 03 أشهر",
+                
+                title_dz_farmer: "وثائق الفلاح:",
+                dz_agri_fiche: "بطاقة وصفية / الفيش السينياليتيك",
+                dz_agri_casnos: "وضعية التحديث CASNOS",
+                dz_agri_bank: "كشوفات الحساب البنكي لآخر 03 أشهر",
+                
+                title_dz_liberal: "وثائق المهن الحرة:",
+                dz_lib_ex: "شهادة ممارسة النشاط (الاعتماد، قرار التنصيب... إلخ)",
+                dz_lib_c20: "الشهائية الجبائية (C20) أو الميزانية العمومية الختامية",
+                dz_lib_casnos: "وضعية التحديث CASNOS",
+                dz_lib_bank: "كشوفات الحساب البنكي لآخر 03 أشهر",
+                
+                title_dz_retired: "وثائق المتقاعد (بالدينار الجزائري):",
+                dz_ret_cnr: "شهادة الدخل من الصندوق الوطني للتقاعد CNR",
+                dz_ret_bank: "كشوفات الحساب البنكي و/أو الحساب البريدي CCP لآخر 03 أشهر",
+                
+                title_ext_fr_salary: "🇫🇷 فرنسا - أجير (الحد الأدنى 1800 يورو):",
+                ext_fr_sal_work: "شهادة عمل",
+                ext_fr_sal_tax: "آخر إشعار بالضريبة / Avis d'imposition",
+                ext_fr_sal_pay: "كشوفات الراتب لآخر 3 أشهر (الحد الأدنى 1800 يورو)",
+                ext_fr_sal_bank: "كشوفات الحساب البنكي لآخر 03 أشهر",
+                
+                title_ext_fr_merchant: "🇫🇷 فرنسا - تاجر:",
+                ext_fr_comm_tax: "آخر إشعار بالضريبة / Avis d'imposition",
+                ext_fr_comm_kbis: "مستخرج السجل التجاري K-BIS",
+                ext_fr_comm_bank: "كشوفات الحساب البنكي لآخر 03 أشهر",
+                
+                title_ext_usa: "🇺🇸 الولايات المتحدة الأمريكية:",
+                ext_usa_work: "شهادة عمل",
+                ext_usa_tax: "النموذج الضريبي 1040 أو W2",
+                ext_usa_pay: "كشوفات الراتب لآخر 03 أشهر",
+                ext_usa_bank: "كشوفات الحساب البنكي لآخر 03 أشهر",
+                
+                title_ext_canada: "🇨🇦 كندا:",
+                ext_can_work: "شهادة عمل",
+                ext_can_tax: "آخر إشعار بالتقييم الضريبي / Avis de cotisation",
+                ext_can_pay: "كشوفات الراتب لآخر 03 أشهر",
+                ext_can_bank: "كشوفات الحساب البنكي لآخر 03 أشهر"
             }
         };
 
         const checklistItems = [
             // ACADEMIC SECTION
-            { id: "preinscription_universitaly", section: "academic", name: { fr: "Certificat de préinscription Universitaly", ar: "شهادة التسجيل المسبق يونيفرسيتالي", en: "Universitaly Pre-enrollment Certificate" }, desc: { fr: "Certificat parvenu exclusivement à travers le portail Universitaly pour des études universitaires ou admission[cite: 2].", ar: "الشهادة المستلمة حصرياً عبر بوابة يونيفرسيتالي للدراسات الجامعية أو القبول[cite: 2]." } },
-            { id: "cursus_algerie", section: "academic", name: { fr: "Documentation des études antécédentes en Algérie", ar: "وثائق الدراسات السابقة في الجزائر", en: "Prior Studies Documentation in Algeria" }, desc: { fr: "Photocopie de la documentation concernant les études des années antécédentes en Algérie. Présenter les originaux[cite: 2].", ar: "نسخة من وثائق السنوات الدراسية السابقة في الجزائر، مع تقديم الأصول[cite: 2]." } },
-            { id: "attestation_langue", section: "academic", name: { fr: "Attestation de connaissance de la langue", ar: "شهادة كفاءة اللغة", en: "Language Proficiency Attestation" }, desc: { fr: "Niveau B2 requis. Italien (CELI, CILS, PLIDA) ou Anglais (IELTS délivré par le British Council)[cite: 2].", ar: "مستوى B2 مطلوب. الإيطالية (CELI, CILS, PLIDA) أو الإنجليزية (IELTS من المجلس الثقافي البريطاني)[cite: 2]." } },
-            { id: "form_long_sejour", section: "academic", name: { fr: "Formulaire long séjour rempli et signé", ar: "استمارة الإقامة طويلة المدى", en: "Long-Stay Application Form" }, desc: { fr: "Formulaire original pour la demande de visa d'entrée[cite: 2]. Téléchargeable ou remis chez VFS Global[cite: 2].", ar: "الاستمارة الأصلية لطلب التأشيرة[cite: 2]. يمكن تحميلها أو استلامها من مركز VFS Global[cite: 2]." } },
-            { id: "photo_biometrique", section: "academic", name: { fr: "Photographie biométrique", ar: "الصورة البيومترية", en: "Biometric Photo" }, desc: { fr: "Photo couleur (30x40mm), récente (max 6 mois) sur fond blanc conforme aux normes OACI[cite: 2].", ar: "صورة شخصية ملونة (30×40 ملم)، حديثة (أقل من 6 أشهر) بخلفية بيضاء ومعايير الـ OACI[cite: 2]." } },
-            { id: "passeport_original", section: "academic", name: { fr: "Original du passeport", ar: "أصل جواز السفر", en: "Original Passport" }, desc: { fr: "Validité supérieure d'au moins 15 mois par rapport au visa demandé, contenant 2 feuillets vierges face à face[cite: 2].", ar: "صلاحية تزيد عن 15 شهراً من التأشيرة المطلوبة، ويحتوي على صفحتين فارغتين متقابلتين[cite: 2]." } },
-            { id: "passeport_photocopie", section: "academic", name: { fr: "Photocopie du passeport", ar: "نسخة من جواز السفر", en: "Passport Photocopy" }, desc: { fr: "Photocopie de la page biométrique et de toutes les pages contenant des visas ou cachets Schengen[cite: 2].", ar: "نسخة من الصفحة البيومترية وجميع الصفحات التي تحتوي على تأشيرات أو أختام دخول وخروج شينغن[cite: 2]." } },
-            
+            { id: "preinscription_universitaly", section: "academic", name: { fr: "Certificat de préinscription Universitaly", ar: "شهادة التسجيل المسبق يونيفرسيتالي", en: "Universitaly Pre-enrollment Certificate" }, desc: { fr: "Certificat parvenu exclusivement à travers le portail Universitaly pour des études universitaires ou admission.", ar: "الشهادة المستلمة حصرياً عبر بوابة يونيفرسيتالي للدراسات الجامعية أو القبول." } },
+            { id: "cursus_algerie", section: "academic", name: { fr: "Documentation des études antécédentes en Algérie", ar: "وثائق الدراسات السابقة في الجزائر", en: "Prior Studies Documentation in Algeria" }, desc: { fr: "Photocopie de la documentation concernant les études des années antécédentes en Algérie. Présenter les originaux.", ar: "نسخة من وثائق السنوات الدراسية السابقة في الجزائر، مع تقديم الأصول." } },
+            { id: "attestation_langue", section: "academic", name: { fr: "Attestation de connaissance de la langue", ar: "شهادة كفاءة اللغة", en: "Language Proficiency Attestation" }, desc: { fr: "Niveau B2 requis. Italien (CELI, CILS, PLIDA) ou Anglais (IELTS délivré par le British Council).", ar: "مستوى B2 مطلوب. الإيطالية (CELI, CILS, PLIDA) أو الإنجليزية (IELTS من المجلس الثقافي البريطاني)." } },
+            { id: "form_long_sejour", section: "academic", name: { fr: "Formulaire long séjour rempli et signé", ar: "استمارة الإقامة طويلة المدى", en: "Long-Stay Application Form" }, desc: { fr: "Formulaire original pour la demande de visa d'entrée. Téléchargeable ou remis chez VFS Global.", ar: "الاستمارة الأصلية لطلب التأشيرة. يمكن تحميلها أو استلامها من مركز VFS Global." } },
+            { id: "photo_biometrique", section: "academic", name: { fr: "Photographie biométrique", ar: "الصورة البيومترية", en: "Biometric Photo" }, desc: { fr: "Photo couleur (30x40mm), récente (max 6 mois) sur fond blanc conforme aux normes OACI.", ar: "صورة شخصية ملونة (30×40 ملم)، حديثة (أقل من 6 أشهر) بخلفية بيضاء ومعايير الـ OACI." } },
+            { id: "passeport_original", section: "academic", name: { fr: "Original du passeport", ar: "أصل جواز السفر", en: "Original Passport" }, desc: { fr: "Validité supérieure d'au moins 15 mois par rapport au visa demandé, contenant 2 feuillets vierges face à face.", ar: "صلاحية تزيد عن 15 شهراً من التأشيرة المطلوبة، ويحتوي على صفحتين فارغتين متقابلتين." } },
+            { id: "passeport_photocopie", section: "academic", name: { fr: "Photocopie du passeport", ar: "نسخة من جواز السفر", en: "Passport Photocopy" }, desc: { fr: "Photocopie de la page biométrique et de toutes les pages contenant des visas ou cachets Schengen.", ar: "نسخة من الصفحة البيومترية وجميع الصفحات التي تحتوي على تأشيرات أو أختام دخول وخروج شينغن." } },
             // FINANCIALS & GUARANTORS SECTION
-            { id: "moyens_economiques", section: "financial", name: { fr: "Preuve des moyens économiques de subsistance", ar: "إثبات الإمكانيات المادية للمعيشة", en: "Proof of Economic Means of Subsistence" }, desc: { fr: "Au moins 457,99 € par mois[cite: 2]. Extraits de compte bancaire relatifs aux 6 derniers mois (personnels ou familiaux)[cite: 2].", ar: "457.99 يورو شهرياً على الأقل[cite: 2]. كشوفات الحساب البنكي لآخر 6 أشهر (شخصية أو عائلية)[cite: 2]." } },
-            { id: "situation_garants", section: "financial", name: { fr: "Justificatifs de la situation des Garants", ar: "وثائق الوضع السوسيومهني للكفلاء", en: "Socio-Professional Proof of Guarantors" }, desc: { fr: "Justificatifs de la situation socioprofessionnelle des parents ou des Garants (Photocopie / Originaux)[cite: 2].", ar: "إثباتات الوضع المهني والاجتماعي للوالدين أو الكفلاء (نسخ / أصول)[cite: 2]." } },
-            { id: "moyens_logement", section: "financial", name: { fr: "Déclaration de disponibilité de logement en Italie", ar: "إقرار توفر السكن في إيطاليا", en: "Declaration of Accommodation Availability" }, desc: { fr: "Bail, réservation d'hôtel (15+ jours), ou Déclaration d'Hospitalité, ainsi que les fonds pour le rapatriement[cite: 2].", ar: "عقد إيجار، حجز فندق (15+ يوم)، أو إقرار استضافة، بالإضافة إلى تكاليف الترحيل[cite: 2]." } },
-            { id: "assurance_medicale", section: "financial", name: { fr: "Assurance médicale", ar: "التأمين الصحي", en: "Schengen Medical Insurance" }, desc: { fr: "Couvrant les soins/hospitalisation d'urgence (30 000 €) sans limitations, ou déclaration consulaire[cite: 2].", ar: "تغطية العلاج والمستشفى الطارئ (30,000 يورو) بدون قيود أو استثناءات[cite: 2]." } },
-            { id: "titre_transport", section: "financial", name: { fr: "Titre de transport / Réservation", ar: "تذكرة السفر أو حجز الطيران", en: "Flight Ticket or Booking Reservation" }, desc: { fr: "Billet d'aller simple ou réservation de billet confirmée[cite: 2].", ar: "تذكرة ذهاب فقط أو حجز مؤكد للرحلة[cite: 2]." } }
+            { id: "moyens_economiques", section: "financial", name: { fr: "Preuve des moyens économiques de subsistance", ar: "إثبات الإمكانيات المادية للمعيشة", en: "Proof of Economic Means of Subsistence" }, desc: { fr: "Au moins 457,99 € par mois. Extraits de compte bancaire relatifs aux 6 derniers mois (personnels ou familiaux).", ar: "457.99 يورو شهرياً على الأقل. كشوفات الحساب البنكي لآخر 6 أشهر (شخصية أو عائلية)." } },
+            { id: "situation_garants", section: "financial", name: { fr: "Justificatifs de la situation des Garants", ar: "وثائق الوضع السوسيومهني للكفلاء", en: "Socio-Professional Proof of Guarantors" }, desc: { fr: "Justificatifs de la situation socioprofessionnelle des parents ou des Garants (Photocopie / Originaux).", ar: "إثباتات الوضع المهني والاجتماعي للوالدين أو الكفلاء (نسخ / أصول)." } },
+            { id: "moyens_logement", section: "financial", name: { fr: "Déclaration de disponibilité de logement en Italie", ar: "إقرار توفر السكن في إيطاليا", en: "Declaration of Accommodation Availability" }, desc: { fr: "Bail, réservation d'hôtel (15+ jours), ou Déclaration d'Hospitalité, ainsi que les fonds pour le rapatriement.", ar: "عقد إيجار، حجز فندق (15+ يوم)، أو إقرار استضافة، بالإضافة إلى تكاليف الترحيل." } },
+            { id: "assurance_medicale", section: "financial", name: { fr: "Assurance médicale", ar: "التأمين الصحي", en: "Schengen Medical Insurance" }, desc: { fr: "Couvrant les soins/hospitalisation d'urgence (30 000 €) sans limitations, ou déclaration consulaire.", ar: "تغذية العلاج والمستشفى الطارئ (30,000 يورو) بدون قيود أو استثناءات." } },
+            { id: "titre_transport", section: "financial", name: { fr: "Titre de transport / Réservation", ar: "تذكرة السفر أو حجز الطيران", en: "Flight Ticket or Booking Reservation" }, desc: { fr: "Billet d'aller simple ou réservation de billet confirmée.", ar: "تذكرة ذهاب فقط أو حجز مؤكد للرحلة." } }
+        ];
+
+        // Complete list of fresh columns mapping database
+        const extraKeys = [
+            'garant_selected_type',
+            'dz_pe_charge', 'dz_identity',
+            'dz_sal_work', 'dz_sal_cnas', 'dz_sal_pay', 'dz_sal_bank',
+            'dz_comm_rc', 'dz_comm_social', 'dz_comm_c20', 'dz_comm_bank',
+            'dz_agri_fiche', 'dz_agri_casnos', 'dz_agri_bank',
+            'dz_lib_ex', 'dz_lib_c20', 'dz_lib_casnos', 'dz_lib_bank',
+            'dz_ret_cnr', 'dz_ret_bank',
+            'ext_fr_sal_work', 'ext_fr_sal_tax', 'ext_fr_sal_pay', 'ext_fr_sal_bank',
+            'ext_fr_comm_tax', 'ext_fr_comm_kbis', 'ext_fr_comm_bank',
+            'ext_usa_work', 'ext_usa_tax', 'ext_usa_pay', 'ext_usa_bank',
+            'ext_can_work', 'ext_can_tax', 'ext_can_pay', 'ext_can_bank'
         ];
 
         function changeLanguage(langCode) {
@@ -112,30 +312,38 @@
             document.getElementById('forum-title-display').innerText = trans.forumTitle;
             document.getElementById('forum-submit-btn').innerText = trans.postBtn;
             
-            // Translate the Navigation Tab Buttons
             document.getElementById('nav-academic-btn').innerText = trans.tabAcademic;
             document.getElementById('nav-financial-btn').innerText = trans.tabFinancial;
+            document.getElementById('nav-dsu-btn').innerText = trans.tabDsu;
             document.getElementById('nav-forum-btn').innerText = trans.tabForum;
+            document.getElementById('login-notice').innerText = trans.loginNotice;
         }
 
-        // Switches between the 3 main sections cleanly
         function switchWorkspaceTab(sectionName) {
-            // Hide all workspaces
             document.getElementById('workspace-academic').classList.add('hidden');
             document.getElementById('workspace-financial').classList.add('hidden');
+            document.getElementById('workspace-dsu').classList.add('hidden');
             document.getElementById('workspace-forum').classList.add('hidden');
             
-            // Reset nav tab buttons look
             document.querySelectorAll('.workspace-nav-btn').forEach(btn => {
                 btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-xs');
-                btn.classList.add('bg-white', 'text-slate-600', 'border-slate-200');
+                btn.classList.add('bg-white', 'dark:bg-slate-900', 'text-slate-600', 'dark:text-slate-400', 'border-slate-200', 'dark:border-slate-800');
             });
 
-            // Show active workspace and style its tab button
             document.getElementById(`workspace-${sectionName}`).classList.remove('hidden');
             const activeBtn = document.getElementById(`nav-${sectionName}-btn`);
-            activeBtn.classList.remove('bg-white', 'text-slate-600', 'border-slate-200');
+            activeBtn.classList.remove('bg-white', 'dark:bg-slate-900', 'text-slate-600', 'dark:text-slate-400', 'border-slate-200', 'dark:border-slate-800');
             activeBtn.classList.add('bg-indigo-600', 'text-white', 'shadow-xs');
+        }
+
+        function toggleTheme() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.theme = 'light';
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.theme = 'dark';
+            }
         }
 
         async function loadStudentProfile() {
@@ -157,16 +365,24 @@
             globalProgressMap = {};
             if (data) {
                 checklistItems.forEach(item => globalProgressMap[item.id] = data[item.id] || "missing");
+                extraKeys.forEach(k => globalProgressMap[k] = data[k] || "missing");
+                globalProgressMap['garant_selected_type'] = data['garant_selected_type'] || "";
             } else {
                 const initialPayload = { student_name: currentStudent };
                 checklistItems.forEach(item => initialPayload[item.id] = 'missing');
+                extraKeys.forEach(k => initialPayload[k] = 'missing');
+                initialPayload['garant_selected_type'] = '';
+
                 await _supabase.from('student_progress').insert([initialPayload]);
+                
                 checklistItems.forEach(item => globalProgressMap[item.id] = "missing");
+                extraKeys.forEach(k => globalProgressMap[k] = "missing");
+                globalProgressMap['garant_selected_type'] = "";
             }
 
             renderChecklistUI();
             loadForumPosts();
-            switchWorkspaceTab('academic'); // Default view on load
+            switchWorkspaceTab('academic');
         }
 
         function renderChecklistUI() {
@@ -177,41 +393,187 @@
             
             checklistItems.forEach(item => {
                 const savedStatus = globalProgressMap[item.id] || "missing";
-                let cardColor = "bg-white border-slate-200";
-                if(savedStatus === 'ready') cardColor = "bg-emerald-50/40 border-emerald-200";
-                else if(savedStatus === 'in_progress') cardColor = "bg-amber-50/40 border-amber-200";
+                let cardColor = "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800";
+                if(savedStatus === 'ready') cardColor = "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800";
+                else if(savedStatus === 'in_progress') cardColor = "bg-amber-50/40 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800";
 
                 const card = document.createElement('div');
-                card.className = `p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border rounded-xl transition shadow-2xs ${cardColor}`;
+                card.className = `p-4 flex flex-col border rounded-xl transition shadow-2xs text-start ${cardColor}`;
                 
                 const isReady = savedStatus === 'ready';
                 const isInProgress = savedStatus === 'in_progress';
                 const buttonText = isInProgress ? uiTranslations[currentLang].workingOnIt : uiTranslations[currentLang].markProgress;
 
-                card.innerHTML = `
-                    <div class="flex items-start gap-3 grow">
-                        <input type="checkbox" ${isReady ? 'checked' : ''} 
-                            onchange="saveProgress('${item.id}', this.checked ? 'ready' : 'missing')" 
-                            class="mt-1 w-4 h-4 rounded border-slate-300 text-indigo-600 cursor-pointer">
-                        <div>
-                            <div class="flex items-center gap-2">
-                                 <span>${isReady ? '✅' : isInProgress ? '🔄' : '⚠️'}</span>
-                                 <h3 class="font-bold text-sm text-slate-800">${item.name[currentLang]}</h3>
+                let extraSubContent = "";
+                if (item.id === "situation_garants") {
+                    const gt = garantTranslations[currentLang];
+                    extraSubContent = `
+                        <div class="mt-4 pt-3 border-t border-slate-100 w-full text-start">
+                            <button type="button" onclick="document.getElementById('garant-options').classList.toggle('hidden')" class="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition mb-3">
+                                🔍 Choose Guarantor Type / Type de Garant 👇
+                            </button>
+                            
+                            <div id="garant-options" class="hidden space-y-3 bg-slate-50/80 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                                <select id="garant-type-select" onchange="toggleGarantDocs(this.value)" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-xs font-semibold focus:outline-indigo-500 text-slate-700 dark:text-slate-300">
+                                    <option value="">-- Select Type / Choisir --</option>
+                                    <optgroup label="🇩🇿 GARANT EN ALGÉRIE">
+                                        <option value="dz_salary">💼 Fonctionnaire ou salarié</option>
+                                        <option value="dz_merchant">🏪 Commerçant</option>
+                                        <option value="dz_farmer">🚜 Agriculteur</option>
+                                        <option value="dz_liberal">⚖️ Profession libérale</option>
+                                        <option value="dz_retired">🏡 Retraité</option>
+                                    </optgroup>
+                                    <optgroup label="🌍 GARANT À L'ÉTRANGER">
+                                        <option value="ext_fr_salary">🇫🇷 France : Salarié</option>
+                                        <option value="ext_fr_merchant">🇫🇷 France : Commerçant</option>
+                                        <option value="ext_usa">🇺🇸 USA</option>
+                                        <option value="ext_canada">🇨🇦 Canada</option>
+                                    </optgroup>
+                                </select>
+
+                                <div id="dz-base-rules" class="hidden space-y-2 border-b border-dashed border-slate-200 dark:border-slate-700 pb-2 mb-2 text-xs text-slate-600 dark:text-slate-400">
+                                    <p class="font-bold text-indigo-700 text-[10px] tracking-wide uppercase">${gt.baseHeader}</p>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_pe_charge', this.checked?'ready':'missing')" ${globalProgressMap['dz_pe_charge'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.peCharge}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_identity', this.checked?'ready':'missing')" ${globalProgressMap['dz_identity'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.identity}</label>
+                                </div>
+
+                                <div id="docs-dz_salary" class="hidden space-y-2 text-xs text-slate-600 dark:text-slate-400 ps-1 text-start">
+                                    <p class="font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 pb-1 text-[11px] uppercase tracking-wide">${gt.title_dz_salary}</p>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_sal_work', this.checked?'ready':'missing')" ${globalProgressMap['dz_sal_work'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_sal_work}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_sal_cnas', this.checked?'ready':'missing')" ${globalProgressMap['dz_sal_cnas'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_sal_cnas}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_sal_pay', this.checked?'ready':'missing')" ${globalProgressMap['dz_sal_pay'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_sal_pay}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_sal_bank', this.checked?'ready':'missing')" ${globalProgressMap['dz_sal_bank'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_sal_bank}</label>
+                                </div>
+
+                                <div id="docs-dz_merchant" class="hidden space-y-2 text-xs text-slate-600 dark:text-slate-400 ps-1 text-start">
+                                    <p class="font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 pb-1 text-[11px] uppercase tracking-wide">${gt.title_dz_merchant}</p>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_comm_rc', this.checked?'ready':'missing')" ${globalProgressMap['dz_comm_rc'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_comm_rc}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_comm_social', this.checked?'ready':'missing')" ${globalProgressMap['dz_comm_social'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_comm_social}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_comm_c20', this.checked?'ready':'missing')" ${globalProgressMap['dz_comm_c20'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_comm_c20}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_comm_bank', this.checked?'ready':'missing')" ${globalProgressMap['dz_comm_bank'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_comm_bank}</label>
+                                </div>
+
+                                <div id="docs-dz_farmer" class="hidden space-y-2 text-xs text-slate-600 dark:text-slate-400 ps-1 text-start">
+                                    <p class="font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 pb-1 text-[11px] uppercase tracking-wide">${gt.title_dz_farmer}</p>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_agri_fiche', this.checked?'ready':'missing')" ${globalProgressMap['dz_agri_fiche'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_agri_fiche}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_agri_casnos', this.checked?'ready':'missing')" ${globalProgressMap['dz_agri_casnos'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_agri_casnos}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_agri_bank', this.checked?'ready':'missing')" ${globalProgressMap['dz_agri_bank'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_agri_bank}</label>
+                                </div>
+
+                                <div id="docs-dz_liberal" class="hidden space-y-2 text-xs text-slate-600 dark:text-slate-400 ps-1 text-start">
+                                    <p class="font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 pb-1 text-[11px] uppercase tracking-wide">${gt.title_dz_liberal}</p>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_lib_ex', this.checked?'ready':'missing')" ${globalProgressMap['dz_lib_ex'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_lib_ex}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_lib_c20', this.checked?'ready':'missing')" ${globalProgressMap['dz_lib_c20'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_lib_c20}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_lib_casnos', this.checked?'ready':'missing')" ${globalProgressMap['dz_lib_casnos'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_lib_casnos}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_lib_bank', this.checked?'ready':'missing')" ${globalProgressMap['dz_lib_bank'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_lib_bank}</label>
+                                </div>
+
+                                <div id="docs-dz_retired" class="hidden space-y-2 text-xs text-slate-600 dark:text-slate-400 ps-1 text-start">
+                                    <p class="font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 pb-1 text-[11px] uppercase tracking-wide">${gt.title_dz_retired}</p>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_ret_cnr', this.checked?'ready':'missing')" ${globalProgressMap['dz_ret_cnr'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_ret_cnr}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_ret_bank', this.checked?'ready':'missing')" ${globalProgressMap['dz_ret_bank'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_ret_bank}</label>
+                                </div>
+
+                                <div id="docs-ext_fr_salary" class="hidden space-y-2 text-xs text-slate-600 dark:text-slate-400 ps-1 text-start">
+                                    <p class="font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 pb-1 text-[11px] uppercase tracking-wide">${gt.title_ext_fr_salary}</p>
+                                    <label class="flex items-center gap-2"><input type="checkbox" checked disabled class="rounded text-slate-400 dark:text-slate-600"> ${gt.peCharge}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" checked disabled class="rounded text-slate-400 dark:text-slate-600"> ${gt.identity}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_fr_sal_work', this.checked?'ready':'missing')" ${globalProgressMap['ext_fr_sal_work'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_fr_sal_work}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_fr_sal_tax', this.checked?'ready':'missing')" ${globalProgressMap['ext_fr_sal_tax'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_fr_sal_tax}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_fr_sal_pay', this.checked?'ready':'missing')" ${globalProgressMap['ext_fr_sal_pay'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_fr_sal_pay}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_fr_sal_bank', this.checked?'ready':'missing')" ${globalProgressMap['ext_fr_sal_bank'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_fr_sal_bank}</label>
+                                </div>
+
+                                <div id="docs-ext_fr_merchant" class="hidden space-y-2 text-xs text-slate-600 dark:text-slate-400 ps-1 text-start">
+                                    <p class="font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 pb-1 text-[11px] uppercase tracking-wide">${gt.title_ext_fr_merchant}</p>
+                                    <label class="flex items-center gap-2"><input type="checkbox" checked disabled class="rounded text-slate-400 dark:text-slate-600"> ${gt.peCharge}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" checked disabled class="rounded text-slate-400 dark:text-slate-600"> ${gt.identity}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_fr_comm_tax', this.checked?'ready':'missing')" ${globalProgressMap['ext_fr_comm_tax'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_fr_comm_tax}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_fr_comm_kbis', this.checked?'ready':'missing')" ${globalProgressMap['ext_fr_comm_kbis'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_fr_comm_kbis}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_fr_comm_bank', this.checked?'ready':'missing')" ${globalProgressMap['ext_fr_comm_bank'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_fr_comm_bank}</label>
+                                </div>
+
+                                <div id="docs-ext_usa" class="hidden space-y-2 text-xs text-slate-600 dark:text-slate-400 ps-1 text-start">
+                                    <p class="font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 pb-1 text-[11px] uppercase tracking-wide">${gt.title_ext_usa}</p>
+                                    <label class="flex items-center gap-2"><input type="checkbox" checked disabled class="rounded text-slate-400 dark:text-slate-600"> ${gt.peCharge}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" checked disabled class="rounded text-slate-400 dark:text-slate-600"> ${gt.identity}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_usa_work', this.checked?'ready':'missing')" ${globalProgressMap['ext_usa_work'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_usa_work}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_usa_tax', this.checked?'ready':'missing')" ${globalProgressMap['ext_usa_tax'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_usa_tax}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_usa_pay', this.checked?'ready':'missing')" ${globalProgressMap['ext_usa_pay'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_usa_pay}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_usa_bank', this.checked?'ready':'missing')" ${globalProgressMap['ext_usa_bank'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_usa_bank}</label>
+                                </div>
+
+                                <div id="docs-ext_canada" class="hidden space-y-2 text-xs text-slate-600 dark:text-slate-400 ps-1 text-start">
+                                    <p class="font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 pb-1 text-[11px] uppercase tracking-wide">${gt.title_ext_canada}</p>
+                                    <label class="flex items-center gap-2"><input type="checkbox" checked disabled class="rounded text-slate-400 dark:text-slate-600"> ${gt.peCharge}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" checked disabled class="rounded text-slate-400 dark:text-slate-600"> ${gt.identity}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_can_work', this.checked?'ready':'missing')" ${globalProgressMap['ext_can_work'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_can_work}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_can_tax', this.checked?'ready':'missing')" ${globalProgressMap['ext_can_tax'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_can_tax}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_can_pay', this.checked?'ready':'missing')" ${globalProgressMap['ext_can_pay'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_can_pay}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_can_bank', this.checked?'ready':'missing')" ${globalProgressMap['ext_can_bank'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_can_bank}</label>
+                                </div>
                             </div>
-                            <p class="text-xs text-slate-500 mt-0.5 leading-relaxed">${item.desc[currentLang]}</p>
                         </div>
+                    `;
+                }
+
+                card.innerHTML = `
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full">
+                        <div class="flex items-start gap-3 grow">
+                            <input type="checkbox" ${isReady ? 'checked' : ''} 
+                                onchange="saveProgress('${item.id}', this.checked ? 'ready' : 'missing')" 
+                                class="mt-1 w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-indigo-600 cursor-pointer">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                     <span>${isReady ? '✅' : isInProgress ? '🔄' : '⚠️'}</span>
+                                     <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100">${item.name[currentLang]}</h3>
+                                </div>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">${item.desc[currentLang]}</p>
+                            </div>
+                        </div>
+                        <button onclick="saveProgress('${item.id}', '${isInProgress ? 'missing' : 'in_progress'}')" 
+                            class="text-[10px] font-bold uppercase tracking-tight px-3 py-1.5 rounded-md border transition shrink-0 ${isInProgress ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}">
+                            ${buttonText}
+                        </button>
                     </div>
-                    <button onclick="saveProgress('${item.id}', '${isInProgress ? 'missing' : 'in_progress'}')" 
-                        class="text-[10px] font-bold uppercase tracking-tight px-3 py-1.5 rounded-md border transition shrink-0 ${isInProgress ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}">
-                        ${buttonText}
-                    </button>
+                    ${extraSubContent}
                 `;
 
                 if(item.section === 'academic') academicContainer.appendChild(card);
                 else financialContainer.appendChild(card);
             });
 
+            // Hydrate inner dropdown from stored memory mapping setup
+            if (document.getElementById('garant-type-select')) {
+                 const storedType = globalProgressMap['garant_selected_type'] || "";
+                 document.getElementById('garant-type-select').value = storedType;
+                 executeDOMToggleVisibility(storedType);
+            }
+
             updateProgressMetrics();
+        }
+
+        function executeDOMToggleVisibility(type) {
+            const divs = ['docs-dz_salary', 'docs-dz_merchant', 'docs-dz_farmer', 'docs-dz_liberal', 'docs-dz_retired', 'docs-ext_fr_salary', 'docs-ext_fr_merchant', 'docs-ext_usa', 'docs-ext_canada'];
+            divs.forEach(d => { if(document.getElementById(d)) document.getElementById(d).classList.add('hidden'); });
+            
+            const baseDz = document.getElementById('dz-base-rules');
+            if (baseDz) baseDz.classList.add('hidden');
+
+            if (type) {
+                if (type.startsWith('dz_') && baseDz) {
+                    baseDz.classList.remove('hidden');
+                }
+                const targetView = document.getElementById(`docs-${type}`);
+                if (targetView) targetView.classList.remove('hidden');
+            }
+        }
+
+        async function toggleGarantDocs(type) {
+            executeDOMToggleVisibility(type);
+            if (currentStudent && globalProgressMap['garant_selected_type'] !== type) {
+                await saveProgress('garant_selected_type', type);
+            }
         }
 
         function updateProgressMetrics() {
@@ -230,13 +592,12 @@
             } else {
                 alertBox.classList.add('hidden');
             }
-            document.getElementById('bar-label').innerText = `${pct}% ${uiTranslations[currentLang].completed} (${readyCount} / ${checklistItems.length})`;
+            document.getElementById('bar-label').innerText = `${pct}% completed (${readyCount} / ${checklistItems.length})`;
         }
 
         async function saveProgress(docId, newStatus) {
             globalProgressMap[docId] = newStatus;
-            renderChecklistUI();
-
+            
             const updatePayload = { updated_at: new Date().toISOString() };
             updatePayload[docId] = newStatus;
 
@@ -244,9 +605,14 @@
                 .from('student_progress')
                 .update(updatePayload)
                 .eq('student_name', currentStudent);
+
+            if (!docId.startsWith('dz_') && !docId.startsWith('ext_') && docId !== 'garant_selected_type') {
+                renderChecklistUI();
+            } else {
+                updateProgressMetrics();
+            }
         }
 
-        // Forum Section Channel Switcher (Sub-tabs within Forums)
         function switchForumTab(tabName) {
             activeForumTab = tabName;
             document.querySelectorAll('.forum-tab-btn').forEach(btn => btn.classList.remove('bg-indigo-600', 'text-white'));
@@ -305,15 +671,15 @@
                     .order('created_at', { ascending: true });
 
                 const postEl = document.createElement('div');
-                postEl.className = "bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3 text-left";
+                postEl.className = "bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3 text-left";
                 
                 let repliesHTML = "";
                 if(replies) {
                     replies.forEach(rep => {
                         repliesHTML += `
-                            <div class="bg-white p-2.5 rounded-lg border border-slate-100 text-xs">
-                                <span class="font-bold text-indigo-600">@${rep.student_name}:</span>
-                                <p class="text-slate-700 mt-0.5">${rep.content}</p>
+                            <div class="bg-white dark:bg-slate-800 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700 text-xs">
+                                <span class="font-bold text-indigo-600 dark:text-indigo-400">@${rep.student_name}:</span>
+                                <p class="text-slate-700 dark:text-slate-300 mt-0.5">${rep.content}</p>
                             </div>
                         `;
                     });
@@ -321,12 +687,12 @@
 
                 postEl.innerHTML = `
                     <div class="text-xs">
-                        <span class="font-extrabold text-slate-900">@${post.student_name}</span>
-                        <p class="text-sm text-slate-800 mt-1 font-medium bg-white p-3 rounded-lg border border-slate-100">${post.content}</p>
+                        <span class="font-extrabold text-slate-900 dark:text-white">@${post.student_name}</span>
+                        <p class="text-sm text-slate-800 dark:text-slate-200 mt-1 font-medium bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-100 dark:border-slate-700">${post.content}</p>
                     </div>
-                    <div class="ps-4 border-s-2 border-indigo-100 space-y-2">${repliesHTML}</div>
+                    <div class="ps-4 border-s-2 border-indigo-100 dark:border-indigo-900 space-y-2">${repliesHTML}</div>
                     <div class="flex gap-2 pt-1">
-                        <input id="reply-to-${post.id}" type="text" placeholder="${uiTranslations[currentLang].replyPlaceholder}" class="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs grow focus:outline-indigo-500">
+                        <input id="reply-to-${post.id}" type="text" placeholder="${uiTranslations[currentLang].replyPlaceholder}" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 dark:text-slate-300 rounded-lg px-3 py-1.5 text-xs grow focus:outline-indigo-500">
                         <button onclick="submitReply(${post.id}, 'reply-to-${post.id}')" class="bg-slate-800 text-white font-bold text-xs px-3 py-1.5 rounded-lg hover:bg-slate-900 transition">↳</button>
                     </div>
                 `;
@@ -339,13 +705,13 @@
         }
     </script>
 </head>
-<body class="bg-slate-50 min-h-screen py-6 px-4 text-slate-700 antialiased font-sans">
+<body class="bg-slate-50 dark:bg-slate-950 min-h-screen py-6 px-4 text-slate-700 dark:text-slate-300 antialiased font-sans">
+    <!-- ... Rest of the HTML structure remains same as provided ... -->
 
     <div class="max-w-2xl mx-auto space-y-6">
         
-        <!-- Global Header Menu Selector -->
-        <div class="flex justify-between items-center bg-white p-3 border border-slate-200 rounded-xl shadow-2xs">
-            <div class="relative group cursor-pointer flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-200 transition">
+        <div class="flex justify-between items-center bg-white dark:bg-slate-900 p-3 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xs">
+            <div class="relative group cursor-pointer flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-200 dark:hover:bg-slate-700 transition">
                 <span>ℹ️</span> How it works
                 <div class="absolute top-8 start-0 hidden group-hover:block w-72 bg-slate-900 text-white text-[11px] p-4 rounded-xl shadow-xl space-y-2 z-50 pointer-events-none leading-relaxed">
                     <p class="font-bold border-b border-slate-700 pb-1 text-indigo-400 text-xs">Salistral Visa Assistant Protocol</p>
@@ -355,95 +721,96 @@
                 </div>
             </div>
             <div class="flex gap-2 text-xs font-bold">
-                <button onclick="changeLanguage('fr')" class="px-2.5 py-1 bg-slate-100 rounded-md hover:bg-slate-200 transition">FR</button>
-                <button onclick="changeLanguage('ar')" class="px-2.5 py-1 bg-slate-100 rounded-md hover:bg-slate-200 transition">العربية</button>
-                <button onclick="changeLanguage('en')" class="px-2.5 py-1 bg-slate-100 rounded-md hover:bg-slate-200 transition">EN</button>
+                <button onclick="toggleTheme()" class="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition">🌓</button>
+                <button onclick="changeLanguage('fr')" class="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition">FR</button>
+                <button onclick="changeLanguage('ar')" class="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition">العربية</button>
+                <button onclick="changeLanguage('en')" class="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition">EN</button>
             </div>
         </div>
         
-        <!-- VIEW 1: LOGIN ENTRY HUB -->
-        <div id="auth-panel" class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm text-center max-w-md mx-auto my-12">
-            <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 font-bold text-xl mb-4">🇩🇿</div>
-            <h1 id="main-title" class="text-lg font-black text-slate-900 tracking-tight uppercase">STUDENT VISA FOR ALGERIANS</h1>
+        <div id="auth-panel" class="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm text-center max-w-md mx-auto my-12">
+            <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-bold text-xl mb-4">🇩🇿</div>
+            <h1 id="main-title" class="text-lg font-black text-slate-900 dark:text-white tracking-tight uppercase">STUDENT VISA FOR ALGERIANS</h1>
             <p id="main-subtitle" class="text-xs text-slate-500 mt-2 mb-6 leading-relaxed">This website is made by Salistral to track your progress. A checklist to see what folders you are missing and what you have done. Your data is cloud-saved whenever updated.</p>
             
             <div class="space-y-3">
-                <input id="student-name-input" type="text" placeholder="Entrez votre nom..." class="border border-slate-300 rounded-xl px-4 py-2.5 text-sm w-full focus:outline-none focus:border-indigo-500 text-center font-semibold">
+                <input id="student-name-input" type="text" placeholder="Entrez votre nom..." class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 dark:text-white rounded-xl px-4 py-2.5 text-sm w-full focus:outline-none focus:border-indigo-500 text-center font-semibold">
                 <button id="btn-get-started" onclick="loadStudentProfile()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm py-2.5 rounded-xl transition shadow-xs">Who are you?</button>
+                <p id="login-notice" class="text-[10px] text-slate-500 dark:text-slate-400 mt-4 italic leading-relaxed">Retenez bien votre nom d'utilisateur pour retrouver votre progression. Il est conseillé d'utiliser un nom unique (ex: karim123).</p>
             </div>
         </div>
 
-        <!-- VIEW 2: MAIN DASHBOARD ENVIRONMENT -->
         <div id="checklist-workspace" class="hidden space-y-6">
             
-            <!-- Student Header Profile Sync Stats Panel -->
-            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs flex flex-col gap-4">
+            <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col gap-4">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
-                        <h2 id="current-user-display" class="font-extrabold text-slate-900 text-base">Portefeuille:</h2>
+                        <h2 id="current-user-display" class="font-extrabold text-slate-900 dark:text-white text-base">Portefeuille:</h2>
                         <span class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 tracking-wider uppercase">Live</span>
                     </div>
-                    <button id="btn-logout" onclick="switchAccount()" class="text-xs border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50 px-3 py-1.5 rounded-lg font-semibold transition">Log Out</button>
+                    <button id="btn-logout" onclick="switchAccount()" class="text-xs border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 px-3 py-1.5 rounded-lg font-semibold transition">Log Out</button>
                 </div>
                 <div class="space-y-1">
-                    <div class="w-full bg-slate-100 rounded-full h-2.5">
+                    <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5">
                         <div id="bar-fill" class="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
                     </div>
                     <div class="flex justify-between items-center pt-0.5">
-                        <span id="bar-label" class="text-xs font-bold text-slate-600">0% Completed</span>
-                        <span id="last-update-time" class="text-[10px] text-slate-400">Sync Active</span>
+                        <span id="bar-label" class="text-xs font-bold text-slate-600">0% completed</span>
+                        <span id="last-update-time" class="text-[10px] text-slate-400 dark:text-slate-500">Sync Active</span>
                     </div>
                 </div>
-                <!-- Progress Completion Alert Block -->
                 <div id="ready-alert" class="hidden p-3 bg-emerald-500 text-white text-center font-bold text-sm rounded-xl"></div>
             </div>
 
-            <!-- 🎛️ NEW INTERACTIVE WORKSPACE NAVIGATION TAB BAR -->
-            <div class="grid grid-cols-3 gap-2 p-1 bg-slate-200/60 rounded-xl border border-slate-200">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 p-1 bg-slate-200/60 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-800">
                 <button id="nav-academic-btn" onclick="switchWorkspaceTab('academic')" class="workspace-nav-btn text-xs font-bold py-2.5 px-2 rounded-lg border transition bg-indigo-600 text-white shadow-xs">
                     📁 Docs Académiques
                 </button>
-                <button id="nav-financial-btn" onclick="switchWorkspaceTab('financial')" class="workspace-nav-btn text-xs font-bold py-2.5 px-2 rounded-lg border transition bg-white text-slate-600 border-slate-200 hover:bg-slate-50">
+                <button id="nav-financial-btn" onclick="switchWorkspaceTab('financial')" class="workspace-nav-btn text-xs font-bold py-2.5 px-2 rounded-lg border transition bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800">
                     💼 Garants & Financiers
                 </button>
-                <button id="nav-forum-btn" onclick="switchWorkspaceTab('forum')" class="workspace-nav-btn text-xs font-bold py-2.5 px-2 rounded-lg border transition bg-white text-slate-600 border-slate-200 hover:bg-slate-50">
+                <button id="nav-dsu-btn" onclick="switchWorkspaceTab('dsu')" class="workspace-nav-btn text-xs font-bold py-2.5 px-2 rounded-lg border transition bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800">
+                    🎓 Bourses DSU
+                </button>
+                <button id="nav-forum-btn" onclick="switchWorkspaceTab('forum')" class="workspace-nav-btn text-xs font-bold py-2.5 px-2 rounded-lg border transition bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800">
                     💬 Forums d'Entraide
                 </button>
             </div>
 
-            <!-- TAB 1 CONTENT SECTION: ACADEMIC DOCUMENTS -->
-            <div id="workspace-academic" class="space-y-3 text-start">
+            <div id="workspace-academic" class="space-y-3">
                 <div class="space-y-3" id="academic-rows"></div>
             </div>
 
-            <!-- TAB 2 CONTENT SECTION: FINANCIAL DOCUMENTS -->
-            <div id="workspace-financial" class="space-y-3 text-start hidden">
+            <div id="workspace-financial" class="space-y-3 hidden">
                 <div class="space-y-3" id="financial-rows"></div>
             </div>
 
-            <!-- TAB 3 CONTENT SECTION: INTEGRATED COMMUNITY FORUM MODULE -->
-            <div id="workspace-forum" class="bg-white p-6 rounded-2xl border border-slate-200 space-y-4 shadow-2xs text-start hidden">
-                <h2 id="forum-title-display" class="font-black text-slate-900 text-base tracking-tight">Espace d'Entraide Communautaire</h2>
+            <div id="workspace-dsu" class="bg-white dark:bg-slate-900 p-12 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs text-center hidden">
+                <div class="text-4xl mb-4">⏳</div>
+                <h2 class="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">DSU Scholarship Tracker</h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">Coming Soon / Bientôt disponible / قريباً</p>
+                <p class="text-[10px] text-indigo-500 mt-4 font-bold">STAY TUNED</p>
+            </div>
+
+            <div id="workspace-forum" class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-2xs hidden">
+                <h2 id="forum-title-display" class="font-black text-slate-900 dark:text-white text-base tracking-tight">Espace d'Entraide Communautaire</h2>
                 
-                <!-- Channel Subcategories Tag Selectors -->
-                <div class="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl text-center font-bold text-xs">
+                <div class="grid grid-cols-3 gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-center font-bold text-xs">
                     <button id="tab-academic" onclick="switchForumTab('academic')" class="forum-tab-btn py-1.5 rounded-lg bg-indigo-600 text-white transition">Academic</button>
-                    <button id="tab-financial" onclick="switchForumTab('financial')" class="forum-tab-btn py-1.5 rounded-lg transition">Garants</button>
-                    <button id="tab-general" onclick="switchForumTab('general')" class="forum-tab-btn py-1.5 rounded-lg transition">General</button>
+                    <button id="tab-financial" onclick="switchForumTab('financial')" class="forum-tab-btn py-1.5 rounded-lg transition dark:text-slate-400">Garants</button>
+                    <button id="tab-general" onclick="switchForumTab('general')" class="forum-tab-btn py-1.5 rounded-lg transition dark:text-slate-400">General</button>
                 </div>
 
-                <!-- Post Topic Input Fields -->
                 <div class="flex flex-col sm:flex-row gap-2 pt-2">
-                    <input id="forum-input" type="text" placeholder="Posez votre question ici..." class="border border-slate-200 rounded-xl px-4 py-2 text-xs grow focus:outline-indigo-500">
+                    <input id="forum-input" type="text" placeholder="Posez votre question ici..." class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 dark:text-white rounded-xl px-4 py-2 text-xs grow focus:outline-indigo-500">
                     <button id="forum-submit-btn" onclick="submitForumPost()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-2 rounded-xl transition">Publier</button>
                 </div>
 
-                <!-- Dynamic Real-time Comment Stream Container -->
                 <div id="forum-posts-container" class="space-y-3 max-h-96 overflow-y-auto pt-2"></div>
             </div>
             
             <footer class="text-center text-[10px] text-slate-400 pt-4">
-                STUDENT VISA FOR ALGERIANS • Designed by Salistral • Cloud Execution Secure
+                STUDENT VISA FOR ALGERIANS • Designed by Salistral • 2026
             </footer>
         </div>
 
