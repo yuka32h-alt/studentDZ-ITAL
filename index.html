@@ -17,6 +17,11 @@
             } else {
                 document.documentElement.classList.remove('dark');
             }
+
+            // Global Status Constants for easier maintenance
+            window.STATUS_MISSING = 'missing';
+            window.STATUS_READY = 'ready';
+            window.STATUS_IN_PROGRESS = 'in_progress';
         })();
 
         // Supabase Infrastructure Keys
@@ -317,6 +322,32 @@
             document.getElementById('nav-dsu-btn').innerText = trans.tabDsu;
             document.getElementById('nav-forum-btn').innerText = trans.tabForum;
             document.getElementById('login-notice').innerText = trans.loginNotice;
+
+            // Smart Autofill & Recent Profiles
+            const lastStudentName = localStorage.getItem('last_student_name');
+            if (lastStudentName && !currentStudent) {
+                document.getElementById('student-name-input').value = lastStudentName;
+            }
+            renderRecentProfiles();
+        }
+
+        function renderRecentProfiles() {
+            const recentNames = JSON.parse(localStorage.getItem('recent_student_names') || '[]');
+            const container = document.getElementById('recent-profiles-list');
+            if (!container) return;
+            
+            if (recentNames.length === 0) {
+                container.classList.add('hidden');
+                return;
+            }
+
+            container.classList.remove('hidden');
+            container.innerHTML = recentNames.map(name => `
+                <button onclick="document.getElementById('student-name-input').value='${name}'; loadStudentProfile();" 
+                    class="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-full text-[10px] font-bold border border-indigo-100 dark:border-indigo-800 hover:bg-indigo-100 transition shadow-sm">
+                    👤 ${name}
+                </button>
+            `).join('');
         }
 
         function switchWorkspaceTab(sectionName) {
@@ -356,33 +387,42 @@
             document.getElementById('auth-panel').classList.add('hidden');
             document.getElementById('checklist-workspace').classList.remove('hidden');
 
-            let { data } = await _supabase
+            let { data, error } = await _supabase
                 .from('student_progress')
                 .select('*')
                 .eq('student_name', currentStudent)
                 .maybeSingle();
 
+            if (error) console.error("Sync Error:", error.message);
+
             globalProgressMap = {};
             if (data) {
-                checklistItems.forEach(item => globalProgressMap[item.id] = data[item.id] || "missing");
-                extraKeys.forEach(k => globalProgressMap[k] = data[k] || "missing");
+                checklistItems.forEach(item => globalProgressMap[item.id] = data[item.id] || STATUS_MISSING);
+                extraKeys.forEach(k => globalProgressMap[k] = data[k] || STATUS_MISSING);
                 globalProgressMap['garant_selected_type'] = data['garant_selected_type'] || "";
             } else {
                 const initialPayload = { student_name: currentStudent };
-                checklistItems.forEach(item => initialPayload[item.id] = 'missing');
-                extraKeys.forEach(k => initialPayload[k] = 'missing');
+                checklistItems.forEach(item => initialPayload[item.id] = STATUS_MISSING);
+                extraKeys.forEach(k => initialPayload[k] = STATUS_MISSING);
                 initialPayload['garant_selected_type'] = '';
 
                 await _supabase.from('student_progress').insert([initialPayload]);
                 
-                checklistItems.forEach(item => globalProgressMap[item.id] = "missing");
-                extraKeys.forEach(k => globalProgressMap[k] = "missing");
+                checklistItems.forEach(item => globalProgressMap[item.id] = STATUS_MISSING);
+                extraKeys.forEach(k => globalProgressMap[k] = STATUS_MISSING);
                 globalProgressMap['garant_selected_type'] = "";
             }
+
+            // Smart History: Update recent names list (keep last 3 unique names)
+            let recentNames = JSON.parse(localStorage.getItem('recent_student_names') || '[]');
+            recentNames = [currentStudent, ...recentNames.filter(n => n !== currentStudent)].slice(0, 3);
+            localStorage.setItem('recent_student_names', JSON.stringify(recentNames));
+            localStorage.setItem('last_student_name', currentStudent);
 
             renderChecklistUI();
             loadForumPosts();
             switchWorkspaceTab('academic');
+            updateProgressMetrics();
         }
 
         function renderChecklistUI() {
@@ -392,16 +432,16 @@
             financialContainer.innerHTML = "";
             
             checklistItems.forEach(item => {
-                const savedStatus = globalProgressMap[item.id] || "missing";
+                const savedStatus = globalProgressMap[item.id] || STATUS_MISSING;
                 let cardColor = "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800";
-                if(savedStatus === 'ready') cardColor = "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800";
-                else if(savedStatus === 'in_progress') cardColor = "bg-amber-50/40 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800";
+                if(savedStatus === STATUS_READY) cardColor = "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800";
+                else if(savedStatus === STATUS_IN_PROGRESS) cardColor = "bg-amber-50/40 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800";
 
                 const card = document.createElement('div');
                 card.className = `p-4 flex flex-col border rounded-xl transition shadow-2xs text-start ${cardColor}`;
                 
-                const isReady = savedStatus === 'ready';
-                const isInProgress = savedStatus === 'in_progress';
+                const isReady = savedStatus === STATUS_READY;
+                const isInProgress = savedStatus === STATUS_IN_PROGRESS;
                 const buttonText = isInProgress ? uiTranslations[currentLang].workingOnIt : uiTranslations[currentLang].markProgress;
 
                 let extraSubContent = "";
@@ -433,84 +473,84 @@
 
                                 <div id="dz-base-rules" class="hidden space-y-2 border-b border-dashed border-slate-200 dark:border-slate-700 pb-2 mb-2 text-xs text-slate-600 dark:text-slate-400">
                                     <p class="font-bold text-indigo-700 text-[10px] tracking-wide uppercase">${gt.baseHeader}</p>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_pe_charge', this.checked?'ready':'missing')" ${globalProgressMap['dz_pe_charge'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.peCharge}</label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_identity', this.checked?'ready':'missing')" ${globalProgressMap['dz_identity'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.identity}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_pe_charge', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['dz_pe_charge'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.peCharge}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_identity', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['dz_identity'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.identity}</label>
                                 </div>
 
                                 <div id="docs-dz_salary" class="hidden space-y-2 text-xs text-slate-600 dark:text-slate-400 ps-1 text-start">
                                     <p class="font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 pb-1 text-[11px] uppercase tracking-wide">${gt.title_dz_salary}</p>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_sal_work', this.checked?'ready':'missing')" ${globalProgressMap['dz_sal_work'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_sal_work}</label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_sal_cnas', this.checked?'ready':'missing')" ${globalProgressMap['dz_sal_cnas'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_sal_cnas}</label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_sal_pay', this.checked?'ready':'missing')" ${globalProgressMap['dz_sal_pay'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_sal_pay}</label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_sal_bank', this.checked?'ready':'missing')" ${globalProgressMap['dz_sal_bank'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_sal_bank}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_sal_work', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['dz_sal_work'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.dz_sal_work}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_sal_cnas', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['dz_sal_cnas'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.dz_sal_cnas}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_sal_pay', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['dz_sal_pay'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.dz_sal_pay}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_sal_bank', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['dz_sal_bank'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.dz_sal_bank}</label>
                                 </div>
 
                                 <div id="docs-dz_merchant" class="hidden space-y-2 text-xs text-slate-600 dark:text-slate-400 ps-1 text-start">
                                     <p class="font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 pb-1 text-[11px] uppercase tracking-wide">${gt.title_dz_merchant}</p>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_comm_rc', this.checked?'ready':'missing')" ${globalProgressMap['dz_comm_rc'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_comm_rc}</label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_comm_social', this.checked?'ready':'missing')" ${globalProgressMap['dz_comm_social'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_comm_social}</label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_comm_c20', this.checked?'ready':'missing')" ${globalProgressMap['dz_comm_c20'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_comm_c20}</label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_comm_bank', this.checked?'ready':'missing')" ${globalProgressMap['dz_comm_bank'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_comm_bank}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_comm_rc', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['dz_comm_rc'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.dz_comm_rc}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_comm_social', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['dz_comm_social'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.dz_comm_social}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_comm_c20', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['dz_comm_c20'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.dz_comm_c20}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_comm_bank', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['dz_comm_bank'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.dz_comm_bank}</label>
                                 </div>
 
                                 <div id="docs-dz_farmer" class="hidden space-y-2 text-xs text-slate-600 dark:text-slate-400 ps-1 text-start">
                                     <p class="font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 pb-1 text-[11px] uppercase tracking-wide">${gt.title_dz_farmer}</p>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_agri_fiche', this.checked?'ready':'missing')" ${globalProgressMap['dz_agri_fiche'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_agri_fiche}</label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_agri_casnos', this.checked?'ready':'missing')" ${globalProgressMap['dz_agri_casnos'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_agri_casnos}</label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_agri_bank', this.checked?'ready':'missing')" ${globalProgressMap['dz_agri_bank'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_agri_bank}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_agri_fiche', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['dz_agri_fiche'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.dz_agri_fiche}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_agri_casnos', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['dz_agri_casnos'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.dz_agri_casnos}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_agri_bank', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['dz_agri_bank'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.dz_agri_bank}</label>
                                 </div>
 
                                 <div id="docs-dz_liberal" class="hidden space-y-2 text-xs text-slate-600 dark:text-slate-400 ps-1 text-start">
                                     <p class="font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 pb-1 text-[11px] uppercase tracking-wide">${gt.title_dz_liberal}</p>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_lib_ex', this.checked?'ready':'missing')" ${globalProgressMap['dz_lib_ex'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_lib_ex}</label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_lib_c20', this.checked?'ready':'missing')" ${globalProgressMap['dz_lib_c20'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_lib_c20}</label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_lib_casnos', this.checked?'ready':'missing')" ${globalProgressMap['dz_lib_casnos'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_lib_casnos}</label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_lib_bank', this.checked?'ready':'missing')" ${globalProgressMap['dz_lib_bank'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_lib_bank}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_lib_ex', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['dz_lib_ex'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.dz_lib_ex}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_lib_c20', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['dz_lib_c20'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.dz_lib_c20}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_lib_casnos', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['dz_lib_casnos'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.dz_lib_casnos}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_lib_bank', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['dz_lib_bank'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.dz_lib_bank}</label>
                                 </div>
 
                                 <div id="docs-dz_retired" class="hidden space-y-2 text-xs text-slate-600 dark:text-slate-400 ps-1 text-start">
                                     <p class="font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 pb-1 text-[11px] uppercase tracking-wide">${gt.title_dz_retired}</p>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_ret_cnr', this.checked?'ready':'missing')" ${globalProgressMap['dz_ret_cnr'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_ret_cnr}</label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_ret_bank', this.checked?'ready':'missing')" ${globalProgressMap['dz_ret_bank'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.dz_ret_bank}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_ret_cnr', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['dz_ret_cnr'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.dz_ret_cnr}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('dz_ret_bank', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['dz_ret_bank'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.dz_ret_bank}</label>
                                 </div>
 
                                 <div id="docs-ext_fr_salary" class="hidden space-y-2 text-xs text-slate-600 dark:text-slate-400 ps-1 text-start">
                                     <p class="font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 pb-1 text-[11px] uppercase tracking-wide">${gt.title_ext_fr_salary}</p>
                                     <label class="flex items-center gap-2"><input type="checkbox" checked disabled class="rounded text-slate-400 dark:text-slate-600"> ${gt.peCharge}</label>
                                     <label class="flex items-center gap-2"><input type="checkbox" checked disabled class="rounded text-slate-400 dark:text-slate-600"> ${gt.identity}</label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_fr_sal_work', this.checked?'ready':'missing')" ${globalProgressMap['ext_fr_sal_work'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_fr_sal_work}</label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_fr_sal_tax', this.checked?'ready':'missing')" ${globalProgressMap['ext_fr_sal_tax'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_fr_sal_tax}</label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_fr_sal_pay', this.checked?'ready':'missing')" ${globalProgressMap['ext_fr_sal_pay'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_fr_sal_pay}</label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_fr_sal_bank', this.checked?'ready':'missing')" ${globalProgressMap['ext_fr_sal_bank'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_fr_sal_bank}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_fr_sal_work', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['ext_fr_sal_work'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.ext_fr_sal_work}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_fr_sal_tax', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['ext_fr_sal_tax'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.ext_fr_sal_tax}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_fr_sal_pay', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['ext_fr_sal_pay'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.ext_fr_sal_pay}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_fr_sal_bank', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['ext_fr_sal_bank'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.ext_fr_sal_bank}</label>
                                 </div>
 
                                 <div id="docs-ext_fr_merchant" class="hidden space-y-2 text-xs text-slate-600 dark:text-slate-400 ps-1 text-start">
                                     <p class="font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 pb-1 text-[11px] uppercase tracking-wide">${gt.title_ext_fr_merchant}</p>
                                     <label class="flex items-center gap-2"><input type="checkbox" checked disabled class="rounded text-slate-400 dark:text-slate-600"> ${gt.peCharge}</label>
                                     <label class="flex items-center gap-2"><input type="checkbox" checked disabled class="rounded text-slate-400 dark:text-slate-600"> ${gt.identity}</label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_fr_comm_tax', this.checked?'ready':'missing')" ${globalProgressMap['ext_fr_comm_tax'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_fr_comm_tax}</label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_fr_comm_kbis', this.checked?'ready':'missing')" ${globalProgressMap['ext_fr_comm_kbis'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_fr_comm_kbis}</label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_fr_comm_bank', this.checked?'ready':'missing')" ${globalProgressMap['ext_fr_comm_bank'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_fr_comm_bank}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_fr_comm_tax', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['ext_fr_comm_tax'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.ext_fr_comm_tax}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_fr_comm_kbis', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['ext_fr_comm_kbis'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.ext_fr_comm_kbis}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_fr_comm_bank', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['ext_fr_comm_bank'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.ext_fr_comm_bank}</label>
                                 </div>
 
                                 <div id="docs-ext_usa" class="hidden space-y-2 text-xs text-slate-600 dark:text-slate-400 ps-1 text-start">
                                     <p class="font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 pb-1 text-[11px] uppercase tracking-wide">${gt.title_ext_usa}</p>
                                     <label class="flex items-center gap-2"><input type="checkbox" checked disabled class="rounded text-slate-400 dark:text-slate-600"> ${gt.peCharge}</label>
                                     <label class="flex items-center gap-2"><input type="checkbox" checked disabled class="rounded text-slate-400 dark:text-slate-600"> ${gt.identity}</label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_usa_work', this.checked?'ready':'missing')" ${globalProgressMap['ext_usa_work'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_usa_work}</label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_usa_tax', this.checked?'ready':'missing')" ${globalProgressMap['ext_usa_tax'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_usa_tax}</label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_usa_pay', this.checked?'ready':'missing')" ${globalProgressMap['ext_usa_pay'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_usa_pay}</label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_usa_bank', this.checked?'ready':'missing')" ${globalProgressMap['ext_usa_bank'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_usa_bank}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_usa_work', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['ext_usa_work'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.ext_usa_work}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_usa_tax', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['ext_usa_tax'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.ext_usa_tax}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_usa_pay', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['ext_usa_pay'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.ext_usa_pay}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_usa_bank', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['ext_usa_bank'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.ext_usa_bank}</label>
                                 </div>
 
                                 <div id="docs-ext_canada" class="hidden space-y-2 text-xs text-slate-600 dark:text-slate-400 ps-1 text-start">
                                     <p class="font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 pb-1 text-[11px] uppercase tracking-wide">${gt.title_ext_canada}</p>
                                     <label class="flex items-center gap-2"><input type="checkbox" checked disabled class="rounded text-slate-400 dark:text-slate-600"> ${gt.peCharge}</label>
                                     <label class="flex items-center gap-2"><input type="checkbox" checked disabled class="rounded text-slate-400 dark:text-slate-600"> ${gt.identity}</label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_can_work', this.checked?'ready':'missing')" ${globalProgressMap['ext_can_work'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_can_work}</label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_can_tax', this.checked?'ready':'missing')" ${globalProgressMap['ext_can_tax'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_can_tax}</label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_can_pay', this.checked?'ready':'missing')" ${globalProgressMap['ext_can_pay'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_can_pay}</label>
-                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_can_bank', this.checked?'ready':'missing')" ${globalProgressMap['ext_can_bank'] === 'ready'?'checked':''} class="rounded text-indigo-600"> ${gt.ext_can_bank}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_can_work', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['ext_can_work'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.ext_can_work}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_can_tax', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['ext_can_tax'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.ext_can_tax}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_can_pay', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['ext_can_pay'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.ext_can_pay}</label>
+                                    <label class="flex items-center gap-2"><input type="checkbox" onchange="saveProgress('ext_can_bank', this.checked?STATUS_READY:STATUS_MISSING)" ${globalProgressMap['ext_can_bank'] === STATUS_READY?'checked':''} class="rounded text-indigo-600"> ${gt.ext_can_bank}</label>
                                 </div>
                             </div>
                         </div>
@@ -521,17 +561,17 @@
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full">
                         <div class="flex items-start gap-3 grow">
                             <input type="checkbox" ${isReady ? 'checked' : ''} 
-                                onchange="saveProgress('${item.id}', this.checked ? 'ready' : 'missing')" 
+                                onchange="saveProgress('${item.id}', this.checked ? STATUS_READY : STATUS_MISSING)" 
                                 class="mt-1 w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-indigo-600 cursor-pointer">
                             <div>
                                 <div class="flex items-center gap-2">
                                      <span>${isReady ? '✅' : isInProgress ? '🔄' : '⚠️'}</span>
                                      <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100">${item.name[currentLang]}</h3>
                                 </div>
-                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">${item.desc[currentLang]}</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">${item.desc[currentLang]}</p> 
                             </div>
                         </div>
-                        <button onclick="saveProgress('${item.id}', '${isInProgress ? 'missing' : 'in_progress'}')" 
+                        <button onclick="saveProgress('${item.id}', '${isInProgress ? STATUS_MISSING : STATUS_IN_PROGRESS}')" 
                             class="text-[10px] font-bold uppercase tracking-tight px-3 py-1.5 rounded-md border transition shrink-0 ${isInProgress ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}">
                             ${buttonText}
                         </button>
@@ -579,7 +619,7 @@
         function updateProgressMetrics() {
             let readyCount = 0;
             checklistItems.forEach(item => {
-                if(globalProgressMap[item.id] === 'ready') readyCount++;
+                if(globalProgressMap[item.id] === STATUS_READY) readyCount++;
             });
 
             const pct = Math.round((readyCount / checklistItems.length) * 100);
@@ -601,10 +641,12 @@
             const updatePayload = { updated_at: new Date().toISOString() };
             updatePayload[docId] = newStatus;
 
-            await _supabase
+            const { error } = await _supabase
                 .from('student_progress')
                 .update(updatePayload)
                 .eq('student_name', currentStudent);
+
+            if (error) console.error("Update Error:", error.message);
 
             if (!docId.startsWith('dz_') && !docId.startsWith('ext_') && docId !== 'garant_selected_type') {
                 renderChecklistUI();
@@ -624,11 +666,13 @@
             const content = document.getElementById('forum-input').value.trim();
             if(!content) return;
 
-            await _supabase.from('forum_posts').insert([{
+            const { error } = await _supabase.from('forum_posts').insert([{
                 student_name: currentStudent,
                 category: activeForumTab,
                 content: content
             }]);
+
+            if (error) console.error("Post Error:", error.message);
 
             document.getElementById('forum-input').value = "";
             loadForumPosts();
@@ -638,37 +682,48 @@
             const content = document.getElementById(inputId).value.trim();
             if(!content) return;
 
-            await _supabase.from('forum_replies').insert([{
+            const { error } = await _supabase.from('forum_replies').insert([{
                 post_id: postId,
                 student_name: currentStudent,
                 content: content
             }]);
+
+            if (error) console.error("Reply Error:", error.message);
 
             document.getElementById(inputId).value = "";
             loadForumPosts();
         }
 
         async function loadForumPosts() {
-            const { data: posts } = await _supabase
+            const { data: posts, error } = await _supabase
                 .from('forum_posts')
                 .select('*')
                 .eq('category', activeForumTab)
                 .order('created_at', { ascending: false });
 
+            if (error) {
+                console.error("Fetch Error:", error.message);
+                return;
+            }
+
             const container = document.getElementById('forum-posts-container');
             container.innerHTML = "";
 
             if(!posts || posts.length === 0) {
-                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">No topics shared under this section yet.</p>`;
+                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">No topics shared here yet.</p>`;
                 return;
             }
 
+            // Optimized Fetch: Get all relevant replies in one request
+            const postIds = posts.map(p => p.id);
+            const { data: allReplies } = await _supabase
+                .from('forum_replies')
+                .select('*')
+                .in('post_id', postIds)
+                .order('created_at', { ascending: true });
+
             for(let post of posts) {
-                const { data: replies } = await _supabase
-                    .from('forum_replies')
-                    .select('*')
-                    .eq('post_id', post.id)
-                    .order('created_at', { ascending: true });
+                const replies = allReplies ? allReplies.filter(r => r.post_id === post.id) : [];
 
                 const postEl = document.createElement('div');
                 postEl.className = "bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3 text-left";
@@ -701,6 +756,7 @@
         }
 
         function switchAccount() {
+            localStorage.removeItem('last_student_name');
             window.location.reload();
         }
     </script>
@@ -735,8 +791,15 @@
             
             <div class="space-y-3">
                 <input id="student-name-input" type="text" placeholder="Entrez votre nom..." class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 dark:text-white rounded-xl px-4 py-2.5 text-sm w-full focus:outline-none focus:border-indigo-500 text-center font-semibold">
+                
+                <!-- Recent Profiles Quick Access -->
+                <div id="recent-profiles-list" class="flex flex-wrap justify-center gap-2 hidden animate-pulse"></div>
+
                 <button id="btn-get-started" onclick="loadStudentProfile()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm py-2.5 rounded-xl transition shadow-xs">Who are you?</button>
-                <p id="login-notice" class="text-[10px] text-slate-500 dark:text-slate-400 mt-4 italic leading-relaxed">Retenez bien votre nom d'utilisateur pour retrouver votre progression. Il est conseillé d'utiliser un nom unique (ex: karim123).</p>
+                
+                <div id="login-notice-container" class="p-3 mt-4 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-xs font-semibold leading-relaxed flex items-center gap-2">
+                    ⚠️ <span id="login-notice">Retenez bien votre nom d'utilisateur pour retrouver votre progression. Il est conseillé d'utiliser un nom unique (ex: karim123).</span>
+                </div>
             </div>
         </div>
 
