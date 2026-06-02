@@ -14,69 +14,217 @@
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentStudent = "";
+        let currentLang = "en"; // Default global language
+        let globalProgressMap = {}; // Cache the statuses for easy re-rendering
+
+        // Translation Dictionary for UI text elements
+        const uiTranslations = {
+            en: {
+                title: "VFS Study Visa Tracker",
+                subtitle: "Organize your mandatory student visa files for Italy. Type your name below to access your cloud-synchronized portfolio.",
+                placeholder: "Enter your name (e.g. Sarah Jenkins)",
+                btnGetStarted: "Get Started",
+                portfolio: "Portfolio",
+                logout: "Log Out",
+                completed: "Completed",
+                verified: "Verified",
+                notSynced: "Not synced yet",
+                syncing: "Syncing...",
+                syncActive: "Cloud Sync Active",
+                loadSuccess: "Data Loaded Successfully",
+                newPortfolio: "New Portfolio Created",
+                workingOnIt: "Working on it",
+                markProgress: "Mark In Progress",
+                lastSync: "Last sync"
+            },
+            fr: {
+                title: "Suivi Visa d'Études VFS",
+                subtitle: "Organisez vos documents de visa d'étudiant obligatoires pour l'Italie. Entrez votre nom ci-dessous pour accéder à votre portefeuille synchronisé sur le cloud.",
+                placeholder: "Entrez votre nom (ex. Sarah Jenkins)",
+                btnGetStarted: "Commencer",
+                portfolio: "Portefeuille",
+                logout: "Se déconnecter",
+                completed: "Complété",
+                verified: "Vérifié",
+                notSynced: "Pas encore synchronisé",
+                syncing: "Synchronisation...",
+                syncActive: "Synchronisation Cloud Active",
+                loadSuccess: "Données chargées avec succès",
+                newPortfolio: "Nouveau portefeuille créé",
+                workingOnIt: "En cours",
+                markProgress: "Marquer En Cours",
+                lastSync: "Dernière sync"
+            },
+            ar: {
+                title: "متبع تأشيرة الدراسة VFS",
+                subtitle: "قم بتنظيم ملفات تأشيرة الطالب الإلزامية لإيطاليا. اكتب اسمك أدناه للوصول إلى ملفك المتزامن سحابياً.",
+                placeholder: "أدخل اسمك (مثال: سارة جينكينز)",
+                btnGetStarted: "ابدأ الآن",
+                portfolio: "الملف الشخصي",
+                logout: "تسجيل الخروج",
+                completed: "مكتمل",
+                verified: "تم التحقق منه",
+                notSynced: "لم يتم المزامنة بعد",
+                syncing: "جاري المزامنة...",
+                syncActive: "المزامنة السحابية نشطة",
+                loadSuccess: "تم تحميل البيانات بنجاح",
+                newPortfolio: "تم إنشاء ملف جديد",
+                workingOnIt: "جاري العمل عليه",
+                markProgress: "تحديد كقيد الإنجاز",
+                lastSync: "آخر مزامنة"
+            }
+        };
         
+        // Comprehensive Italy Student Visa Checklist with multi-language arrays
         const checklistItems = [
-            { id: "universitaly", category: "Mandatory", name: "Universitaly Summary", desc: "The PDF summary downloaded after pre-enrollment validation." },
-            { id: "degree_legalized", category: "Academic", name: "Legalized Degree/Diploma", desc: "Original certificates legalized or apostilled by your Ministry of Foreign Affairs." },
-            { id: "transcripts", category: "Academic", name: "Final Transcripts", desc: "Official academic records, translated into Italian if required." },
-            { id: "dov_cimea", category: "Academic", name: "DoV or CIMEA", desc: "Declaration of Value or Statement of Comparability." },
-            { id: "admission_letter", category: "Academic", name: "Admission Letter", desc: "Official acceptance from your Italian University." },
-            { id: "language_cert", category: "Academic", name: "Language Proficiency", desc: "IELTS/TOEFL (English) or CILS/CELI (Italian) certificate." },
-            { id: "passport", category: "Personal", name: "Passport & Copies", desc: "Valid for 3+ months after visa expiry. Copy of identity pages." },
-            { id: "visa_form", category: "Forms", name: "Visa Application Form", desc: "D-Type (National Visa) form, filled and signed." },
-            { id: "photos", category: "Personal", name: "Passport Photos", desc: "Two recent photos (35x45mm) on a white background." },
-            { id: "accommodation", category: "Logistics", name: "Proof of Stay", desc: "Lease, hotel booking (15+ days), or Declaration of Hospitality." },
-            { id: "financials", category: "Financial", name: "Proof of Means", desc: "Bank statements showing ~€6,100/year or Scholarship letter." },
-            { id: "insurance", category: "Health", name: "Schengen Insurance", desc: "Health coverage of €30,000 for emergency medical/repatriation." },
-            { id: "flight", category: "Logistics", name: "Flight Reservation", desc: "Round-trip flight booking or a confirmed itinerary." }
+            { 
+                id: "universitaly", 
+                category: { en: "Mandatory", fr: "Obligatoire", ar: "إلزامي" }, 
+                name: { en: "Universitaly Summary", fr: "Résumé Universitaly", ar: "ملخص يونيفرسيتالي" }, 
+                desc: { en: "The PDF summary downloaded after pre-enrollment validation.", fr: "Le résumé PDF téléchargé après la validation de la pré-inscription.", ar: "ملخص PDF الذي تم تنزيله بعد التحقق من التسجيل المسبق." } 
+            },
+            { 
+                id: "degree_legalized", 
+                category: { en: "Academic", fr: "Académique", ar: "أكاديمي" }, 
+                name: { en: "Legalized Degree/Diploma", fr: "Diplôme Légalisé", ar: "الشهادة/الدبلوم المصدق" }, 
+                desc: { en: "Original certificates legalized or apostilled by your Ministry of Foreign Affairs.", fr: "Certificats originaux légalisés ou apostillés par votre ministère des Affaires étrangères.", ar: "الشهادات الأصلية المصدقة من وزارة الخارجية." } 
+            },
+            { 
+                id: "transcripts", 
+                category: { en: "Academic", fr: "Académique", ar: "أكاديمي" }, 
+                name: { en: "Final Transcripts", fr: "Relevés de Notes Finaux", ar: "كشوف الدرجات النهائية" }, 
+                desc: { en: "Official academic records, translated into Italian if required.", fr: "Dossiers académiques officiels, traduits en italien si nécessaire.", ar: "السجلات الأكاديمية الرسمية، مترجمة إلى الإيطالية إذا لزم الأمر." } 
+            },
+            { 
+                id: "dov_cimea", 
+                category: { en: "Academic", fr: "Académique", ar: "أكاديمي" }, 
+                name: { en: "DoV or CIMEA", fr: "DoV ou CIMEA", ar: "إعلان القيمة أو CIMEA" }, 
+                desc: { en: "Declaration of Value or Statement of Comparability.", fr: "Déclaration de Valeur ou Attestation de Comparabilité.", ar: "إعلان القيمة أو بيان المقارنة." } 
+            },
+            { 
+                id: "admission_letter", 
+                category: { en: "Academic", fr: "Académique", ar: "أكاديمي" }, 
+                name: { en: "Admission Letter", fr: "Lettre d'Admission", ar: "رسالة القبول" }, 
+                desc: { en: "Official acceptance from your Italian University.", fr: "Acceptation officielle de votre université italienne.", ar: "القبول الرسمي من الجامعة الإيطالية." } 
+            },
+            { 
+                id: "language_cert", 
+                category: { en: "Academic", fr: "Académique", ar: "أكاديمي" }, 
+                name: { en: "Language Proficiency", fr: "Compétence Linguistique", ar: "كفاءة اللغة" }, 
+                desc: { en: "IELTS/TOEFL (English) or CILS/CELI (Italian) certificate.", fr: "Certificat IELTS/TOEFL (anglais) ou CILS/CELI (italien).", ar: "شهادة آيلتس/توفل (إنجليزية) أو سيلز/سيلي (إيطالية)." } 
+            },
+            { 
+                id: "passport", 
+                category: { en: "Personal", fr: "Personnel", ar: "شخصي" }, 
+                name: { en: "Passport & Copies", fr: "Passeport & Copies", ar: "جواز السفر والنسخ" }, 
+                desc: { en: "Valid for 3+ months after visa expiry. Copy of identity pages.", fr: "Valable 3 mois et plus après l'expiration du visa. Copie des pages d'identité.", ar: "صالح لمدة 3 أشهر بعد انتهاء التأشيرة. نسخة من صفحات الهوية." } 
+            },
+            { 
+                id: "visa_form", 
+                category: { en: "Forms", fr: "Formulaires", ar: "النماذج" }, 
+                name: { en: "Visa Application Form", fr: "Formulaire de Demande de Visa", ar: "نموذج طلب التأشيرة" }, 
+                desc: { en: "D-Type (National Visa) form, filled and signed.", fr: "Formulaire de type D (visa national), rempli et signé.", ar: "نموذج من النوع D (التأشيرة الوطنية)، معبأ وموقع." } 
+            },
+            { 
+                id: "photos", 
+                category: { en: "Personal", fr: "Personnel", ar: "شخصي" }, 
+                name: { en: "Passport Photos", fr: "Photos d'Identité", ar: "الصور الشخصية" }, 
+                desc: { en: "Two recent photos (35x45mm) on a white background.", fr: "Deux photos récentes (35x45 mm) sur fond blanc.", ar: "صوران حديثتان (35x45 ملم) بخلفية بيضاء." } 
+            },
+            { 
+                id: "accommodation", 
+                category: { en: "Logistics", fr: "Logistique", ar: "اللوجستيات" }, 
+                name: { en: "Proof of Stay", fr: "Preuve d'Hébergement", ar: "إثبات الإقامة" }, 
+                desc: { en: "Lease, hotel booking (15+ days), or Declaration of Hospitality.", fr: "Bail, réservation d'hôtel (15 jours+), ou déclaration d'hospitalité.", ar: "عقد إيجار، أو حجز فندق (15+ يومًا)، أو إقرار استضافة." } 
+            },
+            { 
+                id: "financials", 
+                category: { en: "Financial", fr: "Financier", ar: "المالية" }, 
+                name: { en: "Proof of Means", fr: "Preuve de Moyens Financiers", ar: "إثبات القدرة المالية" }, 
+                desc: { en: "Bank statements showing ~€6,100/year or Scholarship letter.", fr: "Relevés bancaires indiquant ~6 100 €/an ou lettre de bourse.", ar: "كشوفات حساب بنكي توضح وجود ~6,100 يورو/سنة أو رسالة المنحة." } 
+            },
+            { 
+                id: "insurance", 
+                category: { en: "Health", fr: "Santé", ar: "الصحة" }, 
+                name: { en: "Schengen Insurance", fr: "Assurance Schengen", ar: "تأمين شينغن" }, 
+                desc: { en: "Health coverage of €30,000 for emergency medical/repatriation.", fr: "Couverture santé de 30 000 € pour les urgences médicales/le rapatriement.", ar: "تغطية صحية بقيمة 30,000 يورو للمساعدات الطبية الطارئة/الترحيل." } 
+            },
+            { 
+                id: "flight", 
+                category: { en: "Logistics", fr: "Logistique", ar: "اللوجستيات" }, 
+                name: { en: "Flight Reservation", fr: "Réservation de Vol", ar: "حجز الطيران" }, 
+                desc: { en: "Round-trip flight booking or a confirmed itinerary.", fr: "Réservation de vol aller-retour ou itinéraire confirmé.", ar: "حجز طيران ذهاب وإياب أو مسار رحلة مؤكد." } 
+            }
         ];
+
+        // Changes layout alignment and language dictionaries dynamically
+        function changeLanguage(langCode) {
+            currentLang = langCode;
+            
+            // Adjust layouts for RTL Right-To-Left alignment for Arabic support
+            if (langCode === 'ar') {
+                document.documentElement.dir = "rtl";
+            } else {
+                document.documentElement.dir = "ltr";
+            }
+            
+            // Re-render structural visual layout blocks
+            translateStaticUI();
+            if (currentStudent) {
+                document.getElementById('current-user-display').innerText = `${uiTranslations[currentLang].portfolio}: ${document.getElementById('student-name-input').value.trim()}`;
+                renderChecklistUI(globalProgressMap);
+            }
+        }
+
+        function translateStaticUI() {
+            const trans = uiTranslations[currentLang];
+            document.getElementById('main-title').innerText = trans.title;
+            document.getElementById('main-subtitle').innerText = trans.subtitle;
+            document.getElementById('student-name-input').placeholder = trans.placeholder;
+            document.getElementById('btn-get-started').innerText = trans.btnGetStarted;
+            document.getElementById('btn-logout').innerText = trans.logout;
+        }
 
         async function loadStudentProfile() {
             const nameInput = document.getElementById('student-name-input').value.trim();
             if (!nameInput) {
-                alert("Please enter your name to view your checklist.");
+                alert(currentLang === 'ar' ? "يرجى إدخال اسمك لعرض الملف." : currentLang === 'fr' ? "Veuillez entrer votre nom." : "Please enter your name to view your checklist.");
                 return;
             }
             
             currentStudent = nameInput.toLowerCase();
-            document.getElementById('current-user-display').innerText = `Student: ${nameInput}`;
-            document.getElementById('sync-status').innerText = "Loading data...";
+            document.getElementById('current-user-display').innerText = `${uiTranslations[currentLang].portfolio}: ${nameInput}`;
+            document.getElementById('sync-status').innerText = uiTranslations[currentLang].syncing;
             
             document.getElementById('auth-panel').classList.add('hidden');
             document.getElementById('checklist-workspace').classList.remove('hidden');
 
-            // Query database for this single wide row entry
             let { data, error } = await _supabase
                 .from('student_progress')
                 .select('*')
                 .eq('student_name', currentStudent)
                 .maybeSingle();
 
-            const progressMap = {};
+            globalProgressMap = {};
             
             if (data) {
-                // If a student row exists, map column headers to their values
                 checklistItems.forEach(item => {
-                    progressMap[item.id] = data[item.id] || "missing";
+                    globalProgressMap[item.id] = data[item.id] || "missing";
                 });
-                document.getElementById('sync-status').innerText = "Data Loaded Successfully";
+                document.getElementById('sync-status').innerText = uiTranslations[currentLang].loadSuccess;
                 if (data.updated_at) {
-                    document.getElementById('last-update-time').innerText = `Last sync: ${new Date(data.updated_at).toLocaleString()}`;
+                    document.getElementById('last-update-time').innerText = `${uiTranslations[currentLang].lastSync}: ${new Date(data.updated_at).toLocaleString()}`;
                 }
             } else {
-                // If a brand new user logged in, create their initial base row entry
                 const initialPayload = { student_name: currentStudent };
                 checklistItems.forEach(item => initialPayload[item.id] = 'missing');
                 
-                const { error: insertError } = await _supabase
-                    .from('student_progress')
-                    .insert([initialPayload]);
-                
-                checklistItems.forEach(item => progressMap[item.id] = "missing");
-                document.getElementById('sync-status').innerText = "New Portfolio Created";
+                await _supabase.from('student_progress').insert([initialPayload]);
+                checklistItems.forEach(item => globalProgressMap[item.id] = "missing");
+                document.getElementById('sync-status').innerText = uiTranslations[currentLang].newPortfolio;
             }
 
-            renderChecklistUI(progressMap);
+            renderChecklistUI(globalProgressMap);
         }
 
         function renderChecklistUI(progressMap) {
@@ -85,14 +233,10 @@
             
             checklistItems.forEach(item => {
                 const savedStatus = progressMap[item.id] || "missing";
-
                 let cardColor = "bg-white border-slate-200";
                 
-                if(savedStatus === 'ready') {
-                    cardColor = "bg-emerald-50/40 border-emerald-200";
-                } else if(savedStatus === 'in_progress') {
-                    cardColor = "bg-amber-50/40 border-amber-200";
-                }
+                if(savedStatus === 'ready') cardColor = "bg-emerald-50/40 border-emerald-200";
+                else if(savedStatus === 'in_progress') cardColor = "bg-amber-50/40 border-amber-200";
 
                 const card = document.createElement('div');
                 card.id = `card-${item.id}`;
@@ -101,23 +245,29 @@
                 const isReady = savedStatus === 'ready';
                 const isInProgress = savedStatus === 'in_progress';
 
+                // Grab translations dynamically depending on currentLang choice
+                const categoryText = item.category[currentLang] || item.category['en'];
+                const nameText = item.name[currentLang] || item.name['en'];
+                const descText = item.desc[currentLang] || item.desc['en'];
+                const buttonText = isInProgress ? uiTranslations[currentLang].workingOnIt : uiTranslations[currentLang].markProgress;
+
                 card.innerHTML = `
                     <div class="flex items-start gap-4 grow">
                         <input type="checkbox" ${isReady ? 'checked' : ''} 
                             onchange="saveProgress('${item.id}', this.checked ? 'ready' : 'missing')" 
                             class="mt-1 w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
                         <div class="max-w-xl">
-                            <span class="text-[10px] uppercase font-bold tracking-wider text-slate-400 block mb-0.5">${item.category}</span>
+                            <span class="text-[10px] uppercase font-bold tracking-wider text-slate-400 block mb-0.5">${categoryText}</span>
                             <div class="flex items-center gap-2">
-                                 <span id="icon-${item.id}">${isReady ? '✅' : isInProgress ? '🔄' : '⚠️'}</span>
-                                 <h3 class="font-bold text-sm text-slate-800">${item.name}</h3>
+                                 <span>${isReady ? '✅' : isInProgress ? '🔄' : '⚠️'}</span>
+                                 <h3 class="font-bold text-sm text-slate-800">${nameText}</h3>
                             </div>
-                            <p class="text-xs text-slate-500 mt-0.5 leading-relaxed">${item.desc}</p>
+                            <p class="text-xs text-slate-500 mt-0.5 leading-relaxed">${descText}</p>
                         </div>
                     </div>
                     <button onclick="saveProgress('${item.id}', '${isInProgress ? 'missing' : 'in_progress'}')" 
                         class="text-[10px] font-bold uppercase tracking-tight px-3 py-1.5 rounded-md border transition ${isInProgress ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}">
-                        ${isInProgress ? 'Working on it' : 'Mark In Progress'}
+                        ${buttonText}
                     </button>
                 `;
                 container.appendChild(card);
@@ -132,24 +282,26 @@
             
             cards.forEach(card => {
                 const checkbox = card.querySelector('input[type="checkbox"]');
-                if (checkbox && checkbox.checked) {
-                    readyCount++;
-                }
+                if (checkbox && checkbox.checked) readyCount++;
             });
 
             const pct = Math.round((readyCount / checklistItems.length) * 100);
             document.getElementById('bar-fill').style.width = `${pct}%`;
-            document.getElementById('bar-label').innerText = `${pct}% Completed (${readyCount} of ${checklistItems.length} Verified)`;
+            
+            const labelTemplate = currentLang === 'ar' 
+                ? `${pct}% ${uiTranslations['ar'].completed} (${readyCount} من ${checklistItems.length} ${uiTranslations['ar'].verified})`
+                : `${pct}% ${uiTranslations[currentLang].completed} (${readyCount} de ${checklistItems.length} ${uiTranslations[currentLang].verified})`;
+                
+            document.getElementById('bar-label').innerText = labelTemplate;
         }
 
         async function saveProgress(docId, newStatus) {
             if (!currentStudent) return;
 
             const statusBadge = document.getElementById('sync-status');
-            statusBadge.innerText = "Syncing...";
+            statusBadge.innerText = uiTranslations[currentLang].syncing;
             statusBadge.className = "inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-bold bg-amber-50 text-amber-700 tracking-wide uppercase border border-amber-200";
             
-            // Build a clean wide column object query package
             const updatePayload = { updated_at: new Date().toISOString() };
             updatePayload[docId] = newStatus;
 
@@ -159,14 +311,14 @@
                 .eq('student_name', currentStudent);
 
             if (error) {
-                alert("Cloud sync failed. Check database logs.");
                 console.error("Database updates failed:", error);
             } else {
-                document.getElementById('sync-status').innerText = "Cloud Sync Active";
-                document.getElementById('last-update-time').innerText = `Last sync: ${new Date().toLocaleTimeString()}`;
+                document.getElementById('sync-status').innerText = uiTranslations[currentLang].syncActive;
+                document.getElementById('last-update-time').innerText = `${uiTranslations[currentLang].lastSync}: ${new Date().toLocaleTimeString()}`;
                 statusBadge.className = "inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-bold bg-emerald-50 text-emerald-700 tracking-wide uppercase border border-emerald-200";
                 
-                loadStudentProfile(); 
+                globalProgressMap[docId] = newStatus; 
+                renderChecklistUI(globalProgressMap);
             }
         }
 
@@ -177,18 +329,25 @@
         }
     </script>
 </head>
-<body class="bg-slate-50 min-h-screen py-12 px-4 text-slate-700 antialiased font-sans">
+<body class="bg-slate-50 min-h-screen py-6 px-4 text-slate-700 antialiased font-sans">
 
     <div class="max-w-2xl mx-auto space-y-6">
         
+        <!-- Quick Global Language Menu Selector Switcher -->
+        <div class="flex justify-end gap-2 text-xs font-bold">
+            <button onclick="changeLanguage('en')" class="px-2.5 py-1 bg-white border border-slate-200 rounded-md hover:bg-slate-100 transition">EN</button>
+            <button onclick="changeLanguage('fr')" class="px-2.5 py-1 bg-white border border-slate-200 rounded-md hover:bg-slate-100 transition">FR</button>
+            <button onclick="changeLanguage('ar')" class="px-2.5 py-1 bg-white border border-slate-200 rounded-md hover:bg-slate-100 transition">العربية</button>
+        </div>
+        
         <div id="auth-panel" class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm text-center max-w-md mx-auto my-12">
             <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 font-bold text-xl mb-4">🎓</div>
-            <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">VFS Study Visa Tracker</h1>
-            <p class="text-xs text-slate-500 mt-2 mb-6 leading-relaxed">Organize your mandatory student visa files for Italy. Type your name below to access your cloud-synchronized portfolio.</p>
+            <h1 id="main-title" class="text-xl font-extrabold text-slate-900 tracking-tight">VFS Study Visa Tracker</h1>
+            <p id="main-subtitle" class="text-xs text-slate-500 mt-2 mb-6 leading-relaxed">Organize your mandatory student visa files for Italy. Type your name below to access your cloud-synchronized portfolio.</p>
             
             <div class="space-y-3">
                 <input id="student-name-input" type="text" placeholder="Enter your name (e.g. Sarah Jenkins)" class="border border-slate-300 rounded-xl px-4 py-2.5 text-sm w-full focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition text-center font-medium">
-                <button onclick="loadStudentProfile()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm py-2.5 rounded-xl transition cursor-pointer shadow-xs">Get Started</button>
+                <button id="btn-get-started" onclick="loadStudentProfile()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm py-2.5 rounded-xl transition cursor-pointer shadow-xs">Get Started</button>
             </div>
         </div>
 
@@ -206,7 +365,7 @@
                     <div id="bar-label" class="text-xs font-semibold text-slate-500 pt-1 block">0% Completed</div>
                     <div id="last-update-time" class="text-[10px] text-slate-400">Not synced yet</div>
                 </div>
-                <button onclick="switchAccount()" class="text-xs border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50 px-3 py-2 rounded-lg font-medium transition cursor-pointer shrink-0 align-self-start md:align-self-center">Log Out</button>
+                <button id="btn-logout" onclick="switchAccount()" class="text-xs border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50 px-3 py-2 rounded-lg font-medium transition cursor-pointer shrink-0 align-self-start md:align-self-center">Log Out</button>
             </div>
 
             <div class="space-y-3" id="rows-container"></div>
