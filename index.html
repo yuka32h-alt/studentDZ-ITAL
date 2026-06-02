@@ -4,32 +4,33 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VFS Student Visa Document Hub</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // PASTE YOUR SUPABASE CREDENTIALS HERE
+        // Supabase Configuration
         const SUPABASE_URL = 'https://zkaffxvincheclkmtfgz.supabase.co'; 
         const SUPABASE_ANON_KEY = 'sb_publishable_bWGg5-BvOet3eocjqdPFVg_gwOvUHaP';
         
-        // Use the global supabase object from the CDN to create the client
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentStudent = "";
         
-        // Italy-Specific VFS Checklist Items
         const checklistItems = [
-            { id: "universitaly", category: "Mandatory", name: "Universitaly Summary", desc: "The summary generated from your Universitaly portal pre-enrollment application." },
-            { id: "dov_cimea", category: "Academic", name: "DoV or CIMEA Statement", desc: "Declaration of Value (from Embassy) or CIMEA Statement of Comparability." },
-            { id: "admission_letter", category: "Academic", name: "Official Admission Letter", desc: "The acceptance letter issued by the Italian university." },
-            { id: "passport", category: "Personal", name: "Valid Passport", desc: "Original + copies. Must be valid for at least 3 months after visa expiry." },
-            { id: "accommodation", category: "Logistics", name: "Proof of Accommodation", desc: "Lease agreement, hotel booking (15+ days), or a Declaration of Hospitality." },
-            { id: "financials", category: "Financial", name: "Proof of Means", desc: "Bank statements showing approx €6,100/year availability, or scholarship proof." },
-            { id: "insurance", category: "Health", name: "Health Insurance", desc: "Coverage of €30,000 for emergency medical/hospital expenses in Schengen area." },
+            { id: "universitaly", category: "Mandatory", name: "Universitaly Summary", desc: "The PDF summary downloaded after pre-enrollment validation." },
+            { id: "degree_legalized", category: "Academic", name: "Legalized Degree/Diploma", desc: "Original certificates legalized or apostilled by your Ministry of Foreign Affairs." },
+            { id: "transcripts", category: "Academic", name: "Final Transcripts", desc: "Official academic records, translated into Italian if required." },
+            { id: "dov_cimea", category: "Academic", name: "DoV or CIMEA", desc: "Declaration of Value or Statement of Comparability." },
+            { id: "admission_letter", category: "Academic", name: "Admission Letter", desc: "Official acceptance from your Italian University." },
+            { id: "language_cert", category: "Academic", name: "Language Proficiency", desc: "IELTS/TOEFL (English) or CILS/CELI (Italian) certificate." },
+            { id: "passport", category: "Personal", name: "Passport & Copies", desc: "Valid for 3+ months after visa expiry. Copy of identity pages." },
+            { id: "visa_form", category: "Forms", name: "Visa Application Form", desc: "D-Type (National Visa) form, filled and signed." },
+            { id: "photos", category: "Personal", name: "Passport Photos", desc: "Two recent photos (35x45mm) on a white background." },
+            { id: "accommodation", category: "Logistics", name: "Proof of Stay", desc: "Lease, hotel booking (15+ days), or Declaration of Hospitality." },
+            { id: "financials", category: "Financial", name: "Proof of Means", desc: "Bank statements showing ~€6,100/year or Scholarship letter." },
+            { id: "insurance", category: "Health", name: "Schengen Insurance", desc: "Health coverage of €30,000 for emergency medical/repatriation." },
             { id: "flight", category: "Logistics", name: "Flight Reservation", desc: "Round-trip flight booking or a confirmed itinerary." }
         ];
 
-
-        // Accesses or creates the student profile on submit
         async function loadStudentProfile() {
             const nameInput = document.getElementById('student-name-input').value.trim();
             if (!nameInput) {
@@ -37,30 +38,43 @@
                 return;
             }
             
-            // Clean up name string for consistent data matching
             currentStudent = nameInput.toLowerCase();
             document.getElementById('current-user-display').innerText = `Student: ${nameInput}`;
+            document.getElementById('sync-status').innerText = "Loading data...";
             
-            // Toggle view visibility panels
             document.getElementById('auth-panel').classList.add('hidden');
             document.getElementById('checklist-workspace').classList.remove('hidden');
 
-            // Query database for this specific student's rows
-            const { data, error } = await _supabase
+            // Query database for this single wide row entry
+            let { data, error } = await _supabase
                 .from('student_progress')
                 .select('*')
-                .eq('student_name', currentStudent);
+                .eq('student_name', currentStudent)
+                .maybeSingle();
 
-            if (error) {
-                console.error("Database connection fault:", error);
-                return;
-            }
-
-            // Create a quick key-value map of saved statuses
             const progressMap = {};
-            data.forEach(row => {
-                progressMap[row.document_key] = row.status;
-            });
+            
+            if (data) {
+                // If a student row exists, map column headers to their values
+                checklistItems.forEach(item => {
+                    progressMap[item.id] = data[item.id] || "missing";
+                });
+                document.getElementById('sync-status').innerText = "Data Loaded Successfully";
+                if (data.updated_at) {
+                    document.getElementById('last-update-time').innerText = `Last sync: ${new Date(data.updated_at).toLocaleString()}`;
+                }
+            } else {
+                // If a brand new user logged in, create their initial base row entry
+                const initialPayload = { student_name: currentStudent };
+                checklistItems.forEach(item => initialPayload[item.id] = 'missing');
+                
+                const { error: insertError } = await _supabase
+                    .from('student_progress')
+                    .insert([initialPayload]);
+                
+                checklistItems.forEach(item => progressMap[item.id] = "missing");
+                document.getElementById('sync-status').innerText = "New Portfolio Created";
+            }
 
             renderChecklistUI(progressMap);
         }
@@ -69,72 +83,90 @@
             const container = document.getElementById('rows-container');
             container.innerHTML = "";
             
-            let readyCount = 0;
-
             checklistItems.forEach(item => {
                 const savedStatus = progressMap[item.id] || "missing";
-                if(savedStatus === 'ready') readyCount++;
 
-                // Dynamic background colors depending on document state
                 let cardColor = "bg-white border-slate-200";
-                let selectColor = "border-slate-300 text-slate-700 bg-white";
                 
                 if(savedStatus === 'ready') {
                     cardColor = "bg-emerald-50/40 border-emerald-200";
-                    selectColor = "border-emerald-500 bg-emerald-50 text-emerald-700 font-semibold";
                 } else if(savedStatus === 'in_progress') {
                     cardColor = "bg-amber-50/40 border-amber-200";
-                    selectColor = "border-amber-400 bg-amber-50 text-amber-800 font-semibold";
                 }
 
                 const card = document.createElement('div');
+                card.id = `card-${item.id}`;
                 card.className = `p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border rounded-xl transition shadow-xs ${cardColor}`;
+                
+                const isReady = savedStatus === 'ready';
+                const isInProgress = savedStatus === 'in_progress';
+
                 card.innerHTML = `
-                    <div class="max-w-xl">
-                        <span class="text-[10px] uppercase font-bold tracking-wider text-slate-400 block mb-0.5">${item.category}</span>
-                        <h3 class="font-bold text-sm text-slate-800 flex items-center gap-1.5">
-                            ${savedStatus === 'ready' ? '✅' : savedStatus === 'in_progress' ? '🔄' : '⚠️'}
-                            ${item.name}
-                        </h3>
-                        <p class="text-xs text-slate-500 mt-0.5 leading-relaxed">${item.desc}</p>
+                    <div class="flex items-start gap-4 grow">
+                        <input type="checkbox" ${isReady ? 'checked' : ''} 
+                            onchange="saveProgress('${item.id}', this.checked ? 'ready' : 'missing')" 
+                            class="mt-1 w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+                        <div class="max-w-xl">
+                            <span class="text-[10px] uppercase font-bold tracking-wider text-slate-400 block mb-0.5">${item.category}</span>
+                            <div class="flex items-center gap-2">
+                                 <span id="icon-${item.id}">${isReady ? '✅' : isInProgress ? '🔄' : '⚠️'}</span>
+                                 <h3 class="font-bold text-sm text-slate-800">${item.name}</h3>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-0.5 leading-relaxed">${item.desc}</p>
+                        </div>
                     </div>
-                    <div>
-                        <select onchange="saveProgress('${item.id}', this.value)" class="text-xs rounded-lg border px-3 py-2 w-full sm:w-auto cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-500 transition ${selectColor}">
-                            <option value="missing" ${savedStatus === 'missing' ? 'selected' : ''}>⚠️ Missing</option>
-                            <option value="in_progress" ${savedStatus === 'in_progress' ? 'selected' : ''}>🔄 In Progress</option>
-                            <option value="ready" ${savedStatus === 'ready' ? 'selected' : ''}>✅ Ready</option>
-                        </select>
-                    </div>
+                    <button onclick="saveProgress('${item.id}', '${isInProgress ? 'missing' : 'in_progress'}')" 
+                        class="text-[10px] font-bold uppercase tracking-tight px-3 py-1.5 rounded-md border transition ${isInProgress ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}">
+                        ${isInProgress ? 'Working on it' : 'Mark In Progress'}
+                    </button>
                 `;
                 container.appendChild(card);
             });
 
-            // Re-calculate completion metrics
+            updateProgressMetrics();
+        }
+
+        function updateProgressMetrics() {
+            const cards = document.querySelectorAll('[id^="card-"]');
+            let readyCount = 0;
+            
+            cards.forEach(card => {
+                const checkbox = card.querySelector('input[type="checkbox"]');
+                if (checkbox && checkbox.checked) {
+                    readyCount++;
+                }
+            });
+
             const pct = Math.round((readyCount / checklistItems.length) * 100);
             document.getElementById('bar-fill').style.width = `${pct}%`;
             document.getElementById('bar-label').innerText = `${pct}% Completed (${readyCount} of ${checklistItems.length} Verified)`;
         }
 
-        // Saves a status modification to the cloud immediately on select change
         async function saveProgress(docId, newStatus) {
             if (!currentStudent) return;
 
-            document.getElementById('sync-status').innerText = "Syncing...";
+            const statusBadge = document.getElementById('sync-status');
+            statusBadge.innerText = "Syncing...";
+            statusBadge.className = "inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-bold bg-amber-50 text-amber-700 tracking-wide uppercase border border-amber-200";
+            
+            // Build a clean wide column object query package
+            const updatePayload = { updated_at: new Date().toISOString() };
+            updatePayload[docId] = newStatus;
+
             const { error } = await _supabase
                 .from('student_progress')
-                .upsert({ 
-                    student_name: currentStudent, 
-                    document_key: docId, 
-                    status: newStatus 
-                }, { onConflict: 'student_name,document_key' });
+                .update(updatePayload)
+                .eq('student_name', currentStudent);
 
             if (error) {
                 alert("Cloud sync failed. Check database logs.");
-                console.error("Database upsert failed:", error);
+                console.error("Database updates failed:", error);
             } else {
-                // Refresh profile data to smoothly recalculate numbers
                 document.getElementById('sync-status').innerText = "Cloud Sync Active";
-                loadStudentProfile();
+                document.getElementById('last-update-time').innerText = `Last sync: ${new Date().toLocaleTimeString()}`;
+                statusBadge.className = "inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-bold bg-emerald-50 text-emerald-700 tracking-wide uppercase border border-emerald-200";
+                
+                loadStudentProfile(); 
             }
         }
 
@@ -172,12 +204,12 @@
                         <div id="bar-fill" class="bg-emerald-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
                     </div>
                     <div id="bar-label" class="text-xs font-semibold text-slate-500 pt-1 block">0% Completed</div>
+                    <div id="last-update-time" class="text-[10px] text-slate-400">Not synced yet</div>
                 </div>
                 <button onclick="switchAccount()" class="text-xs border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50 px-3 py-2 rounded-lg font-medium transition cursor-pointer shrink-0 align-self-start md:align-self-center">Log Out</button>
             </div>
 
-            <div class="space-y-3" id="rows-container">
-                </div>
+            <div class="space-y-3" id="rows-container"></div>
             
             <footer class="text-center text-[11px] text-slate-400 pt-4">
                 VFS Application Assistant App • Secure Serverless Cloud Execution
